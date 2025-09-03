@@ -32,7 +32,7 @@ export default function Navbar() {
               <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3 bg-gradient-to-br from-gray-300 via-gray-100 to-white dark:from-gray-400 dark:via-gray-300 dark:to-gray-100">
                 <div className="relative w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8">
                   <Image
-                    src="/SJP-AI-logo.svg"
+                    src="/sjp-logo.svg"
                     alt="SmartJuanPeso AI Logo"
                     fill
                     sizes="(max-width: 768px) 32px, (max-width: 1024px) 40px, 48px"
