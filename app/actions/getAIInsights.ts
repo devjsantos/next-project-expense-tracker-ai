@@ -34,7 +34,7 @@ export async function getAIInsights(): Promise<AIInsight[]> {
         {
           id: 'welcome-1',
           type: 'info',
-          title: 'Welcome to TropaTrack AI!',
+          title: 'Welcome to SmartJuanPeso AI!',
           message:
             'Start adding your expenses to get personalized AI insights about your spending patterns.',
           action: 'Add your first expense',

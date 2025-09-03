@@ -4,6 +4,7 @@ import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,24 +22,33 @@ export default function Navbar() {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex items-center justify-between h-14 sm:h-16'>
           {/* Logo Section */}
-          <div className='flex items-center'>
+          <div className="flex items-center">
             <Link
-              href='/'
-              className='flex items-center gap-2 sm:gap-3 flex-shrink-0 group transition-all duration-300 hover:scale-105'
+              href="/"
+              className="flex items-center gap-2 sm:gap-3 flex-shrink-0 group transition-all duration-300 hover:scale-105"
               onClick={closeMobileMenu}
             >
-              <div className='w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3'>
-                <span className='text-white text-xs sm:text-sm md:text-lg font-bold'>
-                  💰
-                </span>
+              {/* Optional background (blue gradient instead of green) */}
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3 bg-gradient-to-br from-gray-300 via-gray-100 to-white dark:from-gray-400 dark:via-gray-300 dark:to-gray-100">
+                <div className="relative w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8">
+                  <Image
+                    src="/SJP-AI-logo.svg"
+                    alt="SmartJuanPeso AI Logo"
+                    fill
+                    sizes="(max-width: 768px) 32px, (max-width: 1024px) 40px, 48px"
+                    priority
+                    className="object-contain"
+                  />
+                </div>
               </div>
-              <span className='text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-emerald-600 via-green-500 to-teal-500 bg-clip-text text-transparent'>
-                <span className='hidden sm:inline'>TropaTrack AI</span>
-                <span className='sm:hidden'>TropaTrack AI</span>
+
+              {/* Brand Name with blue gradient instead of green */}
+              <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-300 dark:to-blue-200">
+                <span className="hidden sm:inline">SmartJuanPeso AI</span>
+                <span className="sm:hidden">SJP AI</span>
               </span>
             </Link>
           </div>
-
           {/* Desktop Navigation Links */}
           <div className='hidden md:flex items-center space-x-1'>
             <Link
@@ -121,9 +131,8 @@ export default function Navbar() {
               aria-label='Toggle mobile menu'
             >
               <svg
-                className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 ${
-                  isMobileMenuOpen ? 'rotate-90' : ''
-                }`}
+                className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-90' : ''
+                  }`}
                 fill='none'
                 stroke='currentColor'
                 viewBox='0 0 24 24'
@@ -150,11 +159,10 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         <div
-          className={`md:hidden transition-all duration-300 ease-in-out ${
-            isMobileMenuOpen
+          className={`md:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
               ? 'max-h-96 opacity-100 pb-3 sm:pb-4'
               : 'max-h-0 opacity-0 overflow-hidden'
-          }`}
+            }`}
         >
           <div className='px-2 pt-2 pb-3 space-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-600/50 mt-2 shadow-lg'>
             {/* Mobile Navigation Links */}
