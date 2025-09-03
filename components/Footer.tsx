@@ -15,7 +15,7 @@ const Footer = () => {
                 <span className='text-white text-lg'>💰</span>
               </div>
               <h2 className='text-xl font-bold bg-gradient-to-r from-emerald-600 via-green-500 to-teal-500 bg-clip-text text-transparent'>
-                ExpenseTracker AI
+                TropaTrack AI
               </h2>
             </div>
             <p className='text-gray-600 dark:text-gray-400 leading-relaxed max-w-sm'>
@@ -90,7 +90,7 @@ const Footer = () => {
         <div className='flex flex-col md:flex-row justify-between items-center'>
           <div className='text-center md:text-left mb-4 md:mb-0'>
             <p className='text-gray-500 dark:text-gray-400 text-sm'>
-              © {new Date().getFullYear()} ExpenseTracker AI. All rights
+              © {new Date().getFullYear()} TropaTrack AI. All rights
               reserved.
             </p>
           </div>
