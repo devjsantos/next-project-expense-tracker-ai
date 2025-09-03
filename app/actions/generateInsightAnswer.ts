@@ -15,7 +15,7 @@ export async function generateInsightAnswer(question: string): Promise<string> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const expenses = await db.record.findMany({
+    const expenses = await db.records.findMany({
       where: {
         userId: user.clerkUserId,
         createdAt: {

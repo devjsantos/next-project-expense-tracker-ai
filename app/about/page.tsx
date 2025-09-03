@@ -70,7 +70,7 @@ const AboutPage = () => {
             </div>
             <div className='bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 p-6 rounded-2xl border border-green-100 dark:border-green-800/50'>
               <div className='text-3xl font-bold text-green-600 dark:text-green-400 mb-2'>
-                $2M+
+               ₱2M+
               </div>
               <div className='text-gray-600 dark:text-gray-400 font-medium'>
                 Money Tracked
