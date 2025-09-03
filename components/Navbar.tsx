@@ -37,7 +37,7 @@ export default function Navbar() {
                     fill
                     sizes="(max-width: 768px) 32px, (max-width: 1024px) 40px, 48px"
                     priority
-                    className="object-contain"
+                    className="object-contain filter dark:backdrop-invert-0"
                   />
                 </div>
               </div>
@@ -45,7 +45,7 @@ export default function Navbar() {
               {/* Brand Name with blue gradient instead of green */}
               <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-300 dark:to-blue-200">
                 <span className="hidden sm:inline">SmartJuanPeso AI</span>
-                <span className="sm:hidden">SJP AI</span>
+                <span className="sm:hidden">SmartJuanPeso AI</span>
               </span>
             </Link>
           </div>
