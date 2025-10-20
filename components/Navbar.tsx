@@ -16,6 +16,7 @@ export default function Navbar() {
   // ✅ Handle install prompt setup
   useEffect(() => {
     const handler = (e: Event) => {
+      console.log("🟢 beforeinstallprompt fired");
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstall(true);
@@ -142,14 +143,17 @@ export default function Navbar() {
                   />
                 </div>
               </SignedIn>
-              {showInstall && (
-              <button
-                onClick={handleInstallClick}
-                className='px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
-              >
-                Install App
-              </button>
-            )}
+            </div>
+
+            <div className='p-0.5 sm:p-1'>
+               {showInstall && (
+                  <button
+                    onClick={handleInstallClick}
+                    className='my-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
+                  >
+                    Install App
+                  </button>
+                )}
             </div>
 
             {/* Mobile Menu Button */}
