@@ -1,10 +1,23 @@
 import type { NextConfig } from "next";
+import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
-    domains: ['img.clerk.com'], // allow Clerk's image CDN
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "img.clerk.com",
+      },
+    ],
+  },
+  experimental: {
+    serverActions: {},
   },
 };
 
-export default nextConfig;
+// ✅ Correct export
+export default withPWA({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+})(nextConfig);

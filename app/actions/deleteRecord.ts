@@ -14,7 +14,7 @@ async function deleteRecord(recordId: string): Promise<{
   }
 
   try {
-    await db.records.delete({
+    await db.records.deleteMany({
       where: {
         id: recordId,
         userId,

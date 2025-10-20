@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import ClerkThemeProvider from '@/components/ClerkThemeProvider';
+import ClerkProvider from '@/components/ClerkThemeProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -20,8 +20,19 @@ export const metadata: Metadata = {
   title: 'SmartJuanPeso AI - Smart Financial Management',
   description:
     'AI-powered expense tracking app with intelligent insights, smart categorization, and personalized financial recommendations',
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon-512x512.png",
+  },
 };
-
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#10b981',
+};
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,6 +41,8 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#10b981" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -48,11 +61,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300`}
       >
         <ThemeProvider>
-          <ClerkThemeProvider>
+          <ClerkProvider>
             <Navbar />
             {children}
             <Footer />
-          </ClerkThemeProvider>
+          </ClerkProvider>
         </ThemeProvider>
       </body>
     </html>
