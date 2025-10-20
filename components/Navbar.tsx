@@ -25,18 +25,18 @@ export default function Navbar() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // const handleInstallClick = async () => {
-  //   if (!deferredPrompt) return;
-  //   await deferredPrompt.prompt();
-  //   const { outcome } = await deferredPrompt.userChoice;
-  //   if (outcome === 'accepted') {
-  //     console.log('✅ User accepted install');
-  //   } else {
-  //     console.log('❌ User dismissed install');
-  //   }
-  //   setDeferredPrompt(null);
-  //   setShowInstall(false);
-  // };
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('✅ User accepted install');
+    } else {
+      console.log('❌ User dismissed install');
+    }
+    setDeferredPrompt(null);
+    setShowInstall(false);
+  };
   return (
     <nav className='sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-600/50 shadow-lg shadow-gray-900/5 dark:shadow-black/30'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
@@ -142,14 +142,14 @@ export default function Navbar() {
                   />
                 </div>
               </SignedIn>
-              {/* {showInstall && (
+              {showInstall && (
               <button
                 onClick={handleInstallClick}
                 className='px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
               >
                 Install App
               </button>
-            )} */}
+            )}
             </div>
 
             {/* Mobile Menu Button */}
