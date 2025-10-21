@@ -49,6 +49,24 @@ const AIInsights = () => {
     }
   };
 
+  const handleEmailReport = async () => {
+    try {
+      // dynamic import server action
+      const { default: sendInsightsEmail } = await import(
+        '@/app/actions/sendInsightsEmail'
+      );
+      const result = await sendInsightsEmail();
+      if (result?.ok) {
+        alert('Insight report emailed to your account');
+      } else {
+        alert('Failed to send email: ' + (result?.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Failed to send insights email:', err);
+      alert('Failed to send email.');
+    }
+  };
+
   const handleActionClick = async (insight: InsightData) => {
     if (!insight.action) return;
 
@@ -367,6 +385,12 @@ const AIInsights = () => {
           >
             <span className='sm:hidden'>Refresh</span>
             <span className='hidden sm:inline'>Refresh Insights →</span>
+          </button>
+          <button
+            onClick={handleEmailReport}
+            className='px-3 py-1.5 bg-white text-indigo-600 rounded-lg font-medium text-xs border border-indigo-200 hover:shadow-md transition-all duration-200'
+          >
+            Email Report
           </button>
         </div>
       </div>

@@ -80,6 +80,8 @@ export default function Navbar() {
               <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
             </Link>
 
+            {/* Dashboard removed per request */}
+
             <Link
               href='/about'
               className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
@@ -87,6 +89,16 @@ export default function Navbar() {
               <span className='relative z-10'>About</span>
               <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
             </Link>
+
+            <SignedIn>
+              <Link
+                href='/budget'
+                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
+              >
+                <span className='relative z-10'>Budget</span>
+                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+              </Link>
+            </SignedIn>
 
             <Link
               href='/contact'
@@ -222,6 +234,16 @@ export default function Navbar() {
               <span className='text-base'>📞</span>
               <span>Contact</span>
             </Link>
+            <SignedIn>
+              <Link
+                href='/budget'
+                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
+                onClick={closeMobileMenu}
+              >
+                <span className='text-base'>💰</span>
+                <span>Budget</span>
+              </Link>
+            </SignedIn>
 
             {/* Mobile Authentication */}
             <div className='pt-3 border-t border-gray-200/50 dark:border-gray-600/50'>

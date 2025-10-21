@@ -26,3 +26,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Form input contrast fixes */
+input, select, textarea {
+  color: var(--foreground);
+  background-color: rgba(255,255,255,0.9);
+}
+
+:root.dark input, :root.dark select, :root.dark textarea, .dark input, .dark select, .dark textarea {
+  color: #e6eef6; /* brighter text in dark mode */
+  background-color: rgba(17,24,39,0.35);
+}
+
+/* Ensure placeholder contrast */
+input::placeholder, textarea::placeholder {
+  color: rgba(0,0,0,0.35);
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: rgba(255,255,255,0.45);
+}

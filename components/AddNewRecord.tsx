@@ -5,9 +5,10 @@ import { suggestCategory } from '@/app/actions/suggestCategory';
 
 const AddRecord = () => {
   const formRef = useRef<HTMLFormElement>(null);
-  const [amount, setAmount] = useState(0); // Default value for expense amount
+  const [amount, setAmount] = useState<string>(''); // Default value for expense amount (string to avoid NaN issues)
   const [alertMessage, setAlertMessage] = useState<string | null>(null); // State for alert message
   const [alertType, setAlertType] = useState<'success' | 'error' | null>(null); // State for alert type
+  const [alertsList, setAlertsList] = useState<{ type: 'warning' | 'info' | 'success'; message: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false); // State for loading spinner
   const [category, setCategory] = useState(''); // State for selected expense category
   const [description, setDescription] = useState(''); // State for expense description
@@ -17,19 +18,26 @@ const AddRecord = () => {
     setIsLoading(true); // Show spinner
     setAlertMessage(null); // Clear previous messages
 
-    formData.set('amount', amount.toString()); // Add the amount value to the form data
+  // Ensure amount is sent as a numeric string (default to 0 if empty)
+  formData.set('amount', amount === '' ? '0' : amount);
     formData.set('category', category); // Add the selected category to the form data
 
-    const { error } = await addExpenseRecord(formData); // Removed `data` since it's unused
+    const result = await addExpenseRecord(formData); // capture full result
 
-    if (error) {
-      setAlertMessage(`Error: ${error}`);
+    if (result.error) {
+      setAlertMessage(`Error: ${result.error}`);
       setAlertType('error'); // Set alert type to error
     } else {
       setAlertMessage('Expense record added successfully!');
       setAlertType('success'); // Set alert type to success
-      formRef.current?.reset();
-      setAmount(0); // Reset the amount to the default value
+      const maybeAlerts = (result as { alerts?: { type: 'warning' | 'info' | 'success'; message: string }[] } | undefined)?.alerts;
+      if (Array.isArray(maybeAlerts)) {
+        setAlertsList(maybeAlerts);
+      } else {
+        setAlertsList([]);
+      }
+  formRef.current?.reset();
+  setAmount(''); // Reset the amount to the default value (empty string)
       setCategory(''); // Reset the category
       setDescription(''); // Reset the description
     }
@@ -247,16 +255,18 @@ const AddRecord = () => {
                 min='0'
                 max='100000'
                 step='1'
-                 value={amount === 0 ? '' : amount} 
+                 value={amount}
                 onFocus={() => {
-                  if (amount === 0) setAmount(NaN);
+                  // keep the field empty on focus if it's currently empty
+                  if (amount === '0') setAmount('');
                 }}
                 onBlur={(e) => {
-                  if (!e.target.value) setAmount(0);
+                  // if user left the field empty, normalize to empty string (submission will treat as 0)
+                  if (!e.target.value) setAmount('');
                 }}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setAmount(val === '' ? 0 : parseFloat(val));
+                  // keep a string representation; we convert to number when submitting
+                  setAmount(e.target.value);
                 }}
                 className='w-full pl-6 pr-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-gray-700/90 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200'
                 placeholder='0.00'
@@ -311,6 +321,17 @@ const AddRecord = () => {
             </div>
             <p className='font-medium text-sm'>{alertMessage}</p>
           </div>
+        </div>
+      )}
+      {/* Budget alerts list */}
+      {alertsList.length > 0 && (
+        <div className='mt-4 space-y-2'>
+          {alertsList.map((a, i) => (
+            <div key={i} className='p-3 rounded-md border bg-yellow-50 text-yellow-800'>
+              <div className='font-semibold'>{a.type.toUpperCase()}</div>
+              <div className='text-sm'>{a.message}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>

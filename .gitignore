@@ -1,3 +1,19 @@
+.env
+.env.local
+node_modules/
+/.next
+/.env.*.local
+dev.db
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+/.pnp
+.pnp.js
+coverage/
+dist/
+/tests/
+/scripts/
+/.github/
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

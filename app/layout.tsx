@@ -5,6 +5,7 @@ import ClerkProvider from '@/components/ClerkThemeProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import ToastProvider from '@/components/ToastProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -63,7 +64,9 @@ export default function RootLayout({
         <ThemeProvider>
           <ClerkProvider>
             <Navbar />
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
             <Footer />
           </ClerkProvider>
         </ThemeProvider>

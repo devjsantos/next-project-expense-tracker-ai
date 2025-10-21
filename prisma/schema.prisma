@@ -22,6 +22,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   records Records[]
+  budgets Budget[]
+  emailReports EmailReport[]
 }
 model Records{
   id String @id @default(uuid())
@@ -31,6 +33,43 @@ model Records{
   date DateTime @default(now())
   userId String
   user User @relation(fields: [userId], references: [clerkUserId], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model Budget {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [clerkUserId], onDelete: Cascade)
+  // Monthly budget total in the user's currency
+  monthlyTotal Float @default(0)
+  // Which month this budget refers to (first day of month as DateTime)
+  monthStart DateTime
+  allocations BudgetAllocation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+
+model BudgetAllocation {
+  id String @id @default(uuid())
+  budgetId String
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category String
+  amount Float @default(0)
+  createdAt DateTime @default(now())
+  @@index([budgetId])
+}
+
+model EmailReport {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [clerkUserId], onDelete: Cascade)
+  email String
+  subject String
+  provider String?
+  status String
+  providerResponse String? // store raw provider response or message
   createdAt DateTime @default(now())
   @@index([userId])
 }
