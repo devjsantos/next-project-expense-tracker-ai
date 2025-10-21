@@ -24,8 +24,8 @@ async function setMonthlyBudget(formData: FormData) {
   let allocations: Allocation[] = [];
   try {
     allocations = JSON.parse(allocationsJson) as Allocation[];
-  } catch (e) {
-    return { error: 'Invalid allocations' };
+  } catch {
+    return { error: 'Invalid allocations'};
   }
 
   try {
