@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import ClerkProvider from '@/components/ClerkThemeProvider';
+import { ClerkProvider } from '@clerk/nextjs'; // ✅ use Clerk's official provider
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import ToastProvider from '@/components/ToastProvider';
+import ClerkThemeProvider from '@/components/ClerkThemeProvider'; // your custom theme wrapper
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -21,12 +22,13 @@ export const metadata: Metadata = {
   title: 'SmartJuanPeso AI - Smart Financial Management',
   description:
     'AI-powered expense tracking app with intelligent insights, smart categorization, and personalized financial recommendations',
-  manifest: "/manifest.json",
+  manifest: '/manifest.json',
   icons: {
-    icon: "/icons/icon-192x192.png",
-    apple: "/icons/icon-512x512.png",
+    icon: '/icons/icon-192x192.png',
+    apple: '/icons/icon-512x512.png',
   },
 };
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -34,13 +36,14 @@ export const viewport = {
   viewportFit: 'cover',
   themeColor: '#10b981',
 };
+
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#10b981" />
@@ -63,11 +66,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <ClerkProvider>
-            <Navbar />
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-            <Footer />
+            {/* Your custom Clerk styling */}
+            <ClerkThemeProvider>
+              <Navbar />
+              <ToastProvider>{children}</ToastProvider>
+              <Footer />
+            </ClerkThemeProvider>
           </ClerkProvider>
         </ThemeProvider>
       </body>

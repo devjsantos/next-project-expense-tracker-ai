@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Record } from '@/types/Record';
 import deleteRecord from '@/app/actions/deleteRecord';
+import updateRecord from '@/app/actions/updateRecord';
 
 // Helper function to get category emoji
 const getCategoryEmoji = (category: string) => {
@@ -28,8 +29,48 @@ const RecordItem = ({ record }: { record: Record }) => {
 
   const handleDeleteRecord = async (recordId: string) => {
     setIsLoading(true); // Show loading spinner
-    await deleteRecord(recordId); // Perform delete operation
+    const res = await deleteRecord(recordId); // Perform delete operation
+    try {
+      window.dispatchEvent(new CustomEvent('records:changed'));
+    } catch (e) {/* ignore */}
+    try {
+      window.dispatchEvent(new CustomEvent('budget:changed'));
+    } catch (e) {/* ignore */}
     setIsLoading(false); // Hide loading spinner
+  };
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(record.text || '');
+  const [editAmount, setEditAmount] = useState(record.amount.toString());
+  const [editCategory, setEditCategory] = useState(record.category || 'Other');
+  const [editDate, setEditDate] = useState(new Date(record.date).toISOString().slice(0,10));
+
+  const handleSaveEdit = async () => {
+    setIsLoading(true);
+    try {
+      const amt = parseFloat(editAmount||'0');
+      if (!Number.isFinite(amt) || amt < 0) {
+        alert('Amount must be a non-negative number');
+        setIsLoading(false);
+        return;
+      }
+      const res = await updateRecord({ id: record.id, text: editText, amount: amt, category: editCategory, date: new Date(editDate).toISOString() });
+      if ((res as any).alerts && Array.isArray((res as any).alerts) && (res as any).alerts.length > 0) {
+        // show first alert as a browser alert for now
+        alert((res as any).alerts.map((a: any) => `${a.type.toUpperCase()}: ${a.message}`).join('\n'));
+      }
+      setIsEditing(false);
+      try { window.dispatchEvent(new CustomEvent('records:changed')); } catch (e) { /* ignore */ }
+      try { window.dispatchEvent(new CustomEvent('budget:changed')); } catch (e) { /* ignore */ }
+      if ((res as any).alerts && Array.isArray((res as any).alerts) && (res as any).alerts.length > 0) {
+        try { window.dispatchEvent(new CustomEvent('notifications:changed')); } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      console.error('Failed to update record', e);
+      alert('Failed to update record');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Determine border color based on expense amount
@@ -98,8 +139,37 @@ const RecordItem = ({ record }: { record: Record }) => {
         </div>
 
         <div className='text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2'>
-          <p className='truncate break-words line-clamp-2'>{record?.text}</p>
+          {!isEditing ? (
+            <p className='truncate break-words line-clamp-2'>{record?.text}</p>
+          ) : (
+            <div className='space-y-2'>
+              <input className='w-full p-1 rounded border' value={editText} onChange={(e)=>setEditText(e.target.value)} />
+              <div className='flex gap-2'>
+                <input type='date' className='p-1 rounded border' value={editDate} onChange={(e)=>setEditDate(e.target.value)} />
+                <select className='p-1 rounded border' value={editCategory} onChange={(e)=>setEditCategory(e.target.value)}>
+                  <option>Food</option>
+                  <option>Transportation</option>
+                  <option>Shopping</option>
+                  <option>Entertainment</option>
+                  <option>Bills</option>
+                  <option>Healthcare</option>
+                  <option>Other</option>
+                </select>
+                <input className='p-1 rounded border w-24' value={editAmount} onChange={(e)=>setEditAmount(e.target.value)} />
+              </div>
+              <div className='flex gap-2'>
+                <button onClick={handleSaveEdit} disabled={isLoading} className='px-2 py-1 bg-indigo-600 text-white rounded'>Save</button>
+                <button onClick={()=>setIsEditing(false)} className='px-2 py-1 bg-gray-200 rounded'>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+      {/* Edit button */}
+      <div className='flex items-center gap-2 mt-3'>
+        {!isEditing && (
+          <button onClick={()=>setIsEditing(true)} className='px-2 py-1 text-xs bg-white dark:bg-gray-700 border rounded'>Edit</button>
+        )}
       </div>
     </li>
   );

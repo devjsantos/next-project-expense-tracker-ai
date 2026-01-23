@@ -1,5 +1,7 @@
 import getBudgets from '@/app/actions/getBudgets';
-import BudgetSettings from '@/components/BudgetSettings';
+import BudgetOverview from '@/components/BudgetOverview';
+import RecurringExpenses from '@/components/RecurringExpenses';
+import BudgetHistory from '@/components/BudgetHistory';
 
 export default async function Page(){
   // server-side fetch budgets and pass initial data for current month
@@ -17,7 +19,17 @@ export default async function Page(){
   return (
     <div className='p-4'>
       <h2 className='text-xl font-bold mb-4'>Budget Settings</h2>
-      <BudgetSettings initial={initial} />
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
+        <div className='lg:col-span-2'>
+          <BudgetOverview month={initial.month} />
+        </div>
+        <div>
+          <div className='space-y-4'>
+            <BudgetHistory budgets={(res && res.budgets) || []} />
+            <RecurringExpenses />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

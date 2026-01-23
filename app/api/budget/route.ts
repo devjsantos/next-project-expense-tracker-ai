@@ -17,7 +17,16 @@ export async function GET(req: Request) {
   try {
     const budget = await db.budget.findFirst({ where: { userId, monthStart }, include: { allocations: true } });
     if (!budget) return NextResponse.json({ budget: null });
-    const mapped = { id: budget.id, monthlyTotal: budget.monthlyTotal, monthStart: budget.monthStart.toISOString(), allocations: budget.allocations.map((a) => ({ category: a.category, amount: a.amount })) };
+    const mapped = {
+      id: budget.id,
+      monthlyTotal: budget.monthlyTotal,
+      monthStart: budget.monthStart.toISOString(),
+      allocations: budget.allocations.map((a) => ({ category: a.category, amount: a.amount })),
+      budgetAlertThreshold: budget.budgetAlertThreshold,
+      periodType: budget.periodType,
+      periodStart: budget.periodStart ? budget.periodStart.toISOString() : null,
+      periodEnd: budget.periodEnd ? budget.periodEnd.toISOString() : null,
+    };
     return NextResponse.json({ budget: mapped });
   } catch (e) {
     console.error('Error fetching budget by month', e);

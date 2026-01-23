@@ -220,9 +220,9 @@ export default async function sendInsightsEmail() {
         },
       });
     } catch (e) {
-      console.error('Failed to log email report:', e);
+      console.error('Failed to log email report:', e , 'Catch on SendInsightsEmail');
     }
 
-    return { error: 'Failed to send email' };
+    return { error: 'Failed to send email on SendInsightsEmail', providerResponse: String(error) };
   }
 }

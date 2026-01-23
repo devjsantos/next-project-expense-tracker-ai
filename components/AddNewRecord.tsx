@@ -2,47 +2,69 @@
 import { useRef, useState } from 'react';
 import addExpenseRecord from '@/app/actions/addExpenseRecord';
 import { suggestCategory } from '@/app/actions/suggestCategory';
+import { useToast } from '@/components/ToastProvider';
 
 const AddRecord = () => {
   const formRef = useRef<HTMLFormElement>(null);
-  const [amount, setAmount] = useState<string>(''); // Default value for expense amount (string to avoid NaN issues)
-  const [alertMessage, setAlertMessage] = useState<string | null>(null); // State for alert message
-  const [alertType, setAlertType] = useState<'success' | 'error' | null>(null); // State for alert type
+  const [amount, setAmount] = useState<string>(''); 
+  const [alertMessage, setAlertMessage] = useState<string | null>(null); 
+  const [alertType, setAlertType] = useState<'success' | 'error' | null>(null); 
   const [alertsList, setAlertsList] = useState<{ type: 'warning' | 'info' | 'success'; message: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // State for loading spinner
-  const [category, setCategory] = useState(''); // State for selected expense category
-  const [description, setDescription] = useState(''); // State for expense description
-  const [isCategorizingAI, setIsCategorizingAI] = useState(false); // State for AI categorization loading
+  const [isLoading, setIsLoading] = useState(false); 
+  const [category, setCategory] = useState(''); 
+  const [description, setDescription] = useState(''); 
+  const [isCategorizingAI, setIsCategorizingAI] = useState(false); 
+  const { addToast } = useToast();
 
   const clientAction = async (formData: FormData) => {
-    setIsLoading(true); // Show spinner
-    setAlertMessage(null); // Clear previous messages
+    setIsLoading(true);
+    setAlertMessage(null);
 
-  // Ensure amount is sent as a numeric string (default to 0 if empty)
-  formData.set('amount', amount === '' ? '0' : amount);
-    formData.set('category', category); // Add the selected category to the form data
+    // Validate amount
+    const numericAmount = amount === '' ? 0 : parseFloat(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+      setAlertMessage('Amount must be a non-negative number');
+      setAlertType('error');
+      setIsLoading(false);
+      return;
+    }
+    formData.set('amount', String(numericAmount));
+    formData.set('category', category);
 
-    const result = await addExpenseRecord(formData); // capture full result
+    const result = await addExpenseRecord(formData);
 
     if (result.error) {
       setAlertMessage(`Error: ${result.error}`);
-      setAlertType('error'); // Set alert type to error
+      setAlertType('error');
     } else {
       setAlertMessage('Expense record added successfully!');
-      setAlertType('success'); // Set alert type to success
-      const maybeAlerts = (result as { alerts?: { type: 'warning' | 'info' | 'success'; message: string }[] } | undefined)?.alerts;
-      if (Array.isArray(maybeAlerts)) {
-        setAlertsList(maybeAlerts);
-      } else {
-        setAlertsList([]);
+      setAlertType('success');
+      try { addToast?.({ message: 'Expense added', type: 'success' }); } catch {}
+
+      const maybeAlerts = result.alerts ?? [];
+      setAlertsList(Array.isArray(maybeAlerts) ? maybeAlerts : []);
+
+      // show toasts for any generated alerts
+      try {
+        (maybeAlerts || []).forEach((a: { type: string; message: string }) => {
+          try { addToast?.({ message: a.message, type: a.type === 'warning' ? 'warning' : 'info' }); } catch {}
+        });
+      } catch {}
+
+      formRef.current?.reset();
+      setAmount('');
+      setCategory('');
+      setDescription('');
+
+      // Dispatch global events without unused `e`
+      try { window.dispatchEvent(new CustomEvent('records:changed')); } catch {}
+      try { window.dispatchEvent(new CustomEvent('budget:changed')); } catch {}
+      if (maybeAlerts.length > 0) {
+        try { window.dispatchEvent(new CustomEvent('notifications:changed')); } catch {}
       }
-  formRef.current?.reset();
-  setAmount(''); // Reset the amount to the default value (empty string)
-      setCategory(''); // Reset the category
-      setDescription(''); // Reset the description
     }
 
-    setIsLoading(false); // Hide spinner
+    setIsLoading(false);
   };
 
   const handleAISuggestCategory = async () => {
@@ -75,6 +97,7 @@ const AddRecord = () => {
 
   return (
     <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
+      {/* Header */}
       <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
         <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
           <span className='text-white text-sm sm:text-lg'>💳</span>
@@ -88,23 +111,22 @@ const AddRecord = () => {
           </p>
         </div>
       </div>
+
+      {/* Form */}
       <form
         ref={formRef}
-        onSubmit={(e) => {
-          e.preventDefault();
+        onSubmit={(event) => {
+          event.preventDefault();
           const formData = new FormData(formRef.current!);
           clientAction(formData);
         }}
         className='space-y-6 sm:space-y-8'
       >
-        {/* Expense Description and Date */}
+        {/* Description & Date */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-900/10 dark:to-blue-900/10 rounded-xl border border-indigo-100/50 dark:border-indigo-800/50'>
-          {/* Expense Description */}
+          {/* Description */}
           <div className='space-y-1.5'>
-            <label
-              htmlFor='text'
-              className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'
-            >
+            <label htmlFor='text' className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'>
               <span className='w-1.5 h-1.5 bg-indigo-500 rounded-full'></span>
               Expense Description
             </label>
@@ -115,8 +137,8 @@ const AddRecord = () => {
                 name='text'
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className='w-full pl-3 pr-12 sm:pr-14 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-gray-700/90 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm hover:shadow-md transition-all duration-200'
                 placeholder='Coffee, groceries, gas...'
+                className='w-full pl-3 pr-12 sm:pr-14 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm hover:shadow-md transition-all duration-200'
                 required
               />
               <button
@@ -133,20 +155,11 @@ const AddRecord = () => {
                 )}
               </button>
             </div>
-            {isCategorizingAI && (
-              <div className='flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400'>
-                <div className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse'></div>
-                AI is analyzing your description...
-              </div>
-            )}
           </div>
 
-          {/* Expense Date */}
+          {/* Date */}
           <div className='space-y-1.5'>
-            <label
-              htmlFor='date'
-              className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'
-            >
+            <label htmlFor='date' className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'>
               <span className='w-1.5 h-1.5 bg-blue-500 rounded-full'></span>
               Expense Date
             </label>
@@ -154,21 +167,18 @@ const AddRecord = () => {
               type='date'
               name='date'
               id='date'
-              className='w-full px-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-gray-700/90 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-gray-100 text-sm shadow-sm hover:shadow-md transition-all duration-200'
               required
               onFocus={(e) => e.target.showPicker()}
+              className='w-full px-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 text-gray-900 dark:text-gray-100 text-sm shadow-sm hover:shadow-md transition-all duration-200'
             />
           </div>
         </div>
 
-        {/* Category Selection and Amount */}
+        {/* Category & Amount */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl border border-blue-100/50 dark:border-blue-800/50'>
-          {/* Category Selection */}
+          {/* Category */}
           <div className='space-y-1.5'>
-            <label
-              htmlFor='category'
-              className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'
-            >
+            <label htmlFor='category' className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'>
               <span className='w-1.5 h-1.5 bg-blue-500 rounded-full'></span>
               Category
               <span className='text-xs text-gray-400 dark:text-gray-500 ml-2 font-normal hidden sm:inline'>
@@ -180,74 +190,28 @@ const AddRecord = () => {
               name='category'
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className='w-full px-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-gray-700/90 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-gray-100 cursor-pointer text-sm shadow-sm hover:shadow-md transition-all duration-200'
               required
+              className='w-full px-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl text-gray-900 dark:text-gray-100 cursor-pointer text-sm shadow-sm hover:shadow-md transition-all duration-200'
             >
-              <option
-                value=''
-                disabled
-                className='text-gray-400 dark:text-gray-500'
-              >
-                Select category...
-              </option>
-              <option value='Food' className='text-gray-900 dark:text-gray-100'>
-                🍔 Food & Dining
-              </option>
-              <option
-                value='Transportation'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                🚗 Transportation
-              </option>
-              <option
-                value='Shopping'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                🛒 Shopping
-              </option>
-              <option
-                value='Entertainment'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                🎬 Entertainment
-              </option>
-              <option
-                value='Bills'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                💡 Bills & Utilities
-              </option>
-              <option
-                value='Healthcare'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                🏥 Healthcare
-              </option>
-              <option
-                value='Other'
-                className='text-gray-900 dark:text-gray-100'
-              >
-                📦 Other
-              </option>
+              <option value='' disabled>Select category...</option>
+              <option value='Food'>🍔 Food & Dining</option>
+              <option value='Transportation'>🚗 Transportation</option>
+              <option value='Shopping'>🛒 Shopping</option>
+              <option value='Entertainment'>🎬 Entertainment</option>
+              <option value='Bills'>💡 Bills & Utilities</option>
+              <option value='Healthcare'>🏥 Healthcare</option>
+              <option value='Other'>📦 Other</option>
             </select>
           </div>
 
           {/* Amount */}
           <div className='space-y-1.5'>
-            <label
-              htmlFor='amount'
-              className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'
-            >
+            <label htmlFor='amount' className='flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wide'>
               <span className='w-1.5 h-1.5 bg-blue-500 rounded-full'></span>
               Amount
-              <span className='text-xs text-gray-400 dark:text-gray-500 ml-2 font-normal hidden sm:inline'>
-                Enter amount between ₱0 and ₱100,000
-              </span>
             </label>
             <div className='relative'>
-              <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium text-sm'>
-                ₱
-              </span>
+              <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium text-sm'>₱</span>
               <input
                 type='number'
                 name='amount'
@@ -255,32 +219,22 @@ const AddRecord = () => {
                 min='0'
                 max='100000'
                 step='1'
-                 value={amount}
-                onFocus={() => {
-                  // keep the field empty on focus if it's currently empty
-                  if (amount === '0') setAmount('');
-                }}
-                onBlur={(e) => {
-                  // if user left the field empty, normalize to empty string (submission will treat as 0)
-                  if (!e.target.value) setAmount('');
-                }}
-                onChange={(e) => {
-                  // keep a string representation; we convert to number when submitting
-                  setAmount(e.target.value);
-                }}
-                className='w-full pl-6 pr-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl focus:ring-2 focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-gray-700/90 focus:border-indigo-400 dark:focus:border-indigo-400 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200'
-                placeholder='0.00'
+                value={amount}
+                onFocus={() => { if (amount === '0') setAmount(''); }}
+                onBlur={(e) => { if (!e.target.value) setAmount(''); }}
+                onChange={(e) => setAmount(e.target.value)}
                 required
+                className='w-full pl-6 pr-3 py-2.5 bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200/80 dark:border-gray-600/80 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200'
               />
             </div>
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* Submit */}
         <button
           type='submit'
-          className='w-full relative overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 hover:from-indigo-700 hover:via-blue-600 hover:to-teal-600 text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl font-semibold shadow-xl hover:shadow-2xl group transition-all duration-300 border-2 border-transparent hover:border-white/20 text-sm sm:text-base'
           disabled={isLoading}
+          className='w-full relative overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 hover:from-indigo-700 hover:via-blue-600 hover:to-teal-600 text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl font-semibold shadow-xl hover:shadow-2xl group transition-all duration-300 border-2 border-transparent hover:border-white/20 text-sm sm:text-base'
         >
           <div className='relative flex items-center justify-center gap-2'>
             {isLoading ? (
@@ -298,32 +252,25 @@ const AddRecord = () => {
         </button>
       </form>
 
-      {/* Alert Message */}
+      {/* Alerts */}
       {alertMessage && (
-        <div
-          className={`mt-4 p-3 rounded-xl border-l-4 backdrop-blur-sm ${
-            alertType === 'success'
-              ? 'bg-blue-50/80 dark:bg-blue-900/20 border-l-blue-500 text-blue-800 dark:text-blue-200'
-              : 'bg-red-50/80 dark:bg-red-900/20 border-l-red-500 text-red-800 dark:text-red-200'
-          }`}
-        >
+        <div className={`mt-4 p-3 rounded-xl border-l-4 backdrop-blur-sm ${
+          alertType === 'success'
+            ? 'bg-blue-50/80 dark:bg-blue-900/20 border-l-blue-500 text-blue-800 dark:text-blue-200'
+            : 'bg-red-50/80 dark:bg-red-900/20 border-l-red-500 text-red-800 dark:text-red-200'
+        }`}>
           <div className='flex items-center gap-2'>
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                alertType === 'success'
-                  ? 'bg-blue-100 dark:bg-blue-800'
-                  : 'bg-red-100 dark:bg-red-800'
-              }`}
-            >
-              <span className='text-sm'>
-                {alertType === 'success' ? '✅' : '⚠️'}
-              </span>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+              alertType === 'success' ? 'bg-blue-100 dark:bg-blue-800' : 'bg-red-100 dark:bg-red-800'
+            }`}>
+              <span className='text-sm'>{alertType === 'success' ? '✅' : '⚠️'}</span>
             </div>
             <p className='font-medium text-sm'>{alertMessage}</p>
           </div>
         </div>
       )}
-      {/* Budget alerts list */}
+
+      {/* Budget alerts */}
       {alertsList.length > 0 && (
         <div className='mt-4 space-y-2'>
           {alertsList.map((a, i) => (

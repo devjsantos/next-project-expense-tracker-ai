@@ -1,14 +1,18 @@
 'use client';
 
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useEffect, useState } from 'react';
+import NotificationCenter from '@/components/NotificationCenter';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const { isSignedIn } = useUser();
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
@@ -25,6 +29,39 @@ export default function Navbar() {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  // fetch unread count only when signed in
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let mounted = true;
+
+    async function fetchUnread() {
+      try {
+        const res = await fetch('/api/notifications?unread=true');
+        const json = await res.json();
+        if (mounted) setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
+      } catch (e) {
+        console.error('Failed to fetch unread count', e);
+      }
+    }
+
+    // expose a stable fetch for use elsewhere
+    (window as any).__fetchNotificationsUnread = fetchUnread;
+
+    fetchUnread();
+    const id = setInterval(fetchUnread, 30000);
+
+    // listen for notification changes from other components
+    const handler = () => fetchUnread();
+    window.addEventListener('notifications:changed', handler as EventListener);
+
+    return () => {
+      mounted = false;
+      clearInterval(id);
+      window.removeEventListener('notifications:changed', handler as EventListener);
+      try { delete (window as any).__fetchNotificationsUnread; } catch {};
+    };
+  }, [isSignedIn]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -81,15 +118,15 @@ export default function Navbar() {
             </Link>
 
             {/* Dashboard removed per request */}
-
-            <Link
-              href='/about'
-              className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-            >
-              <span className='relative z-10'>About</span>
-              <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-            </Link>
-
+            <SignedOut>
+              <Link
+                href='/about'
+                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
+              >
+                <span className='relative z-10'>About</span>
+                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+              </Link>
+            </SignedOut>
             <SignedIn>
               <Link
                 href='/budget'
@@ -99,14 +136,14 @@ export default function Navbar() {
                 <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
               </Link>
             </SignedIn>
-
-            <Link
-              href='/contact'
-              className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-            >
-              <span className='relative z-10'>Contact</span>
-              <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-            </Link>
+            <SignedOut>
+              <Link
+                href='/contact'
+                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
+              >
+                <span className='relative z-10'>Contact</span>
+                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+              </Link></SignedOut>
           </div>
 
           {/* Right Section */}
@@ -115,6 +152,40 @@ export default function Navbar() {
             <div className='p-0.5 sm:p-1'>
               <ThemeToggle />
             </div>
+
+            <SignedIn>
+              {/* Notifications Icon */}
+              <div className='relative'>
+                <button
+                  onClick={() => {
+                    setShowNotifications(s => {
+                      const next = !s;
+                      if (next) {
+                        // fetch unread immediately when opening
+                        try { (window as any).__fetchNotificationsUnread?.(); } catch (e) { /* ignore */ }
+                      }
+                      return next;
+                    });
+                  }}
+                  className='p-1 rounded-full hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition'
+                  aria-label='Notifications'
+                >
+                  <svg className='w-5 h-5 text-gray-600 dark:text-gray-300' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' />
+                  </svg>
+                </button>
+                {unreadCount && unreadCount > 0 ? (
+                  <div className='absolute -top-1 -right-1 bg-rose-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center'>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </div>
+                ) : null}
+                {showNotifications && (
+                  <div className='absolute right-0 mt-2'>
+                    <NotificationCenter />
+                  </div>
+                )}
+              </div>
+            </SignedIn>
 
             {/* Authentication - Desktop */}
             <div className='hidden sm:block'>
@@ -158,14 +229,14 @@ export default function Navbar() {
             </div>
 
             <div className='p-0.5 sm:p-1'>
-               {showInstall && (
-                  <button
-                    onClick={handleInstallClick}
-                    className='my-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
-                  >
-                    Install App
-                  </button>
-                )}
+              {showInstall && (
+                <button
+                  onClick={handleInstallClick}
+                  className='my-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
+                >
+                  Install App
+                </button>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -204,8 +275,8 @@ export default function Navbar() {
         {/* Mobile Menu */}
         <div
           className={`md:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
-              ? 'max-h-96 opacity-100 pb-3 sm:pb-4'
-              : 'max-h-0 opacity-0 overflow-hidden'
+            ? 'max-h-96 opacity-100 pb-3 sm:pb-4'
+            : 'max-h-0 opacity-0 overflow-hidden'
             }`}
         >
           <div className='px-2 pt-2 pb-3 space-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-600/50 mt-2 shadow-lg'>
@@ -218,22 +289,25 @@ export default function Navbar() {
               <span className='text-base'>🏠</span>
               <span>Home</span>
             </Link>
-            <Link
-              href='/about'
-              className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
-              onClick={closeMobileMenu}
-            >
-              <span className='text-base'>ℹ️</span>
-              <span>About</span>
-            </Link>
-            <Link
-              href='/contact'
-              className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
-              onClick={closeMobileMenu}
-            >
-              <span className='text-base'>📞</span>
-              <span>Contact</span>
-            </Link>
+            <SignedOut>
+              <Link
+                href='/about'
+                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
+                onClick={closeMobileMenu}
+              >
+                <span className='text-base'>ℹ️</span>
+                <span>About</span>
+              </Link>
+
+              <Link
+                href='/contact'
+                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
+                onClick={closeMobileMenu}
+              >
+                <span className='text-base'>📞</span>
+                <span>Contact</span>
+              </Link>
+            </SignedOut>
             <SignedIn>
               <Link
                 href='/budget'

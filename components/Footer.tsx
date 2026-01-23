@@ -1,5 +1,5 @@
 import Link from 'next/link';
-
+import { SignedIn, SignedOut } from '@clerk/nextjs';
 const Footer = () => {
   return (
     <footer className='relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/20 border-t border-gray-100/50 dark:border-gray-700/50'>
@@ -38,20 +38,30 @@ const Footer = () => {
                 <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
                 Home
               </Link>
-              <Link
-                href='/about'
-                className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
-              >
-                <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                About
-              </Link>
-              <Link
-                href='/contact'
-                className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
-              >
-                <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                Contact
-              </Link>
+              <SignedIn>
+                <Link
+                  href='/budget'
+                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
+                >
+                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
+                  Budget
+                </Link></SignedIn>
+              <SignedOut>
+                <Link
+                  href='/about'
+                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
+                >
+                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
+                  About
+                </Link>
+                <Link
+                  href='/contact'
+                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
+                >
+                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
+                  Contact
+                </Link>
+              </SignedOut>
             </div>
           </div>
 

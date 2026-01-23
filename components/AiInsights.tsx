@@ -57,13 +57,14 @@ const AIInsights = () => {
       );
       const result = await sendInsightsEmail();
       if (result?.ok) {
-        alert('Insight report emailed to your account');
+        alert('Insight report emailed to your email account');
       } else {
-        alert('Failed to send email: ' + (result?.error || 'Unknown error'));
+        const details = result?.providerResponse ? `\nDetails: ${result.providerResponse}` : '';
+        alert('Failed to send email: ' + (result?.error || 'Unknown error') + details);
       }
     } catch (err) {
       console.error('Failed to send insights email:', err);
-      alert('Failed to send email.');
+      alert('Failed to send email on AiInsights.');
     }
   };
 

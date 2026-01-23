@@ -14,16 +14,19 @@ async function getUserRecord(): Promise<{
   }
 
   try {
-    const records = await db.records.findMany({
+    // Aggregate total spent
+    const totals = await db.records.aggregate({
+      where: { userId },
+      _sum: { amount: true },
+    });
+    const record = totals._sum.amount || 0;
+
+    // Count distinct days with records
+    const daysResult = await db.records.groupBy({
+      by: ['date'],
       where: { userId },
     });
-
-  const record = records.reduce((sum: number, record: { amount: number }) => sum + record.amount, 0);
-
-    // Count the number of days with valid sleep records
-    const daysWithRecords = records.filter(
-      (record: { amount: number }) => record.amount > 0
-    ).length;
+    const daysWithRecords = daysResult.length;
 
     return { record, daysWithRecords };
   } catch (error) {
