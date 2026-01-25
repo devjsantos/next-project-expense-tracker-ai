@@ -17,7 +17,7 @@ declare global {
 if (typeof globalThis.__db_fallback__ === "undefined") {
   globalThis.__db_fallback__ = true;
 
-  declare module "@/lib/db" {
+  declare module "@/lib/prisma" {
     // Minimal placeholder shape for db used by server actions
     type EmailReportCreateData = {
       userId: string;

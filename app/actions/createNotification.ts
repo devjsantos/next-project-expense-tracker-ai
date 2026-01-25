@@ -1,5 +1,5 @@
 'use server';
-import { db } from '@/lib/db';
+import { db } from '@/lib/prisma';
 
 export default async function createNotification(userId: string, type: string, title: string, message: string) {
   try {

@@ -3,31 +3,69 @@ import BudgetOverview from '@/components/BudgetOverview';
 import RecurringExpenses from '@/components/RecurringExpenses';
 import BudgetHistory from '@/components/BudgetHistory';
 
-export default async function Page(){
-  // server-side fetch budgets and pass initial data for current month
+/* ================= TYPES ================= */
+
+interface Allocation {
+  category: string;
+  amount: number;
+}
+
+interface BudgetEntry {
+  id: string;
+  monthStart: string; // usually ISO date string
+  monthlyTotal: number;
+  allocations: Allocation[];
+}
+
+interface InitialBudget {
+  month: string;
+  monthlyTotal?: number;
+  allocations?: Allocation[];
+}
+
+/* ================= COMPONENT ================= */
+
+export default async function Page() {
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1,0,0,0));
+  // Create a stable UTC reference for the 1st of the month
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthKey = monthStart.toISOString().slice(0, 7); // "2026-01"
+
   const res = await getBudgets();
-  let initial = { month: monthStart.toISOString().slice(0,7) } as { month: string; monthlyTotal?: number; allocations?: { category: string; amount: number }[] };
-  if (!res.error && Array.isArray(res.budgets)){
-    const found = res.budgets.find((b) => new Date(b.monthStart).toISOString() === monthStart.toISOString());
+  
+  let initial: InitialBudget = { 
+    month: monthKey 
+  };
+
+  // Fixed the 'any' by using the BudgetEntry interface
+  if (res && !res.error && Array.isArray(res.budgets)) {
+    const found = (res.budgets as BudgetEntry[]).find((b: BudgetEntry) => {
+      // Safely compare the YYYY-MM parts
+      return new Date(b.monthStart).toISOString().slice(0, 7) === monthKey;
+    });
+
     if (found) {
-      initial = { month: monthStart.toISOString().slice(0,7), monthlyTotal: found.monthlyTotal, allocations: found.allocations };
+      initial = {
+        month: monthKey,
+        monthlyTotal: found.monthlyTotal,
+        allocations: found.allocations,
+      };
     }
   }
 
   return (
-    <div className='p-4'>
-      <h2 className='text-xl font-bold mb-4'>Budget Settings</h2>
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
-        <div className='lg:col-span-2'>
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
+        Budget Settings
+      </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          {/* We pass the clean "YYYY-MM" string to the Overview */}
           <BudgetOverview month={initial.month} />
         </div>
-        <div>
-          <div className='space-y-4'>
-            <BudgetHistory budgets={(res && res.budgets) || []} />
-            <RecurringExpenses />
-          </div>
+        <div className="space-y-4">
+          <BudgetHistory budgets={res?.budgets || []} />
+          <RecurringExpenses />
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
+import { db } from '@/lib/prisma';
 
 async function getBudgets() {
   const { userId } = await auth();

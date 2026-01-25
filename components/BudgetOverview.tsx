@@ -119,8 +119,21 @@ export default function BudgetOverview({ month }: BudgetOverviewProps) {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-sm font-semibold">Monthly Budget</h3>
-          <div className="text-xs text-gray-500">
-            Period: {new Date(data.monthStart).toLocaleDateString()}
+          <div className="text-xs text-gray-500 font-medium">
+            Period: {(() => {
+              if (!data.monthStart) return "No Date";
+              // Ensure format is YYYY-MM-DD for reliable parsing
+              const dateStr = data.monthStart.length === 7 ? `${data.monthStart}-01` : data.monthStart;
+              const date = new Date(dateStr);
+
+              return isNaN(date.getTime())
+                ? "Select Month"
+                : date.toLocaleString('default', {
+                  month: 'long',
+                  year: 'numeric',
+                  timeZone: 'UTC' // Prevents the date from shifting to the previous month
+                });
+            })()}
           </div>
         </div>
         <div className="text-right flex items-center gap-2">

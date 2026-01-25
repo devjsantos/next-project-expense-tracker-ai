@@ -1,7 +1,7 @@
 'use server';
 
 import { checkUser } from '@/lib/checkUser';
-import { db } from '@/lib/db';
+import { db } from '@/lib/prisma';
 import { generateAIAnswer, ExpenseRecord } from '@/lib/ai';
 
 export async function generateInsightAnswer(question: string): Promise<string> {

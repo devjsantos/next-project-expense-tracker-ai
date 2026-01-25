@@ -3,7 +3,7 @@ import { checkUser } from '@/lib/checkUser';
 import { getAIInsights } from './getAIInsights';
 import getUserRecord from './getUserRecord';
 import getBestWorstExpense from './getBestWorstExpense';
-import { db } from '@/lib/db';
+import { db } from '@/lib/prisma';
 import sendEmail from '@/lib/email';
 
 type EmailReportCreateData = {

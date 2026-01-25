@@ -4,282 +4,187 @@ import { useState, useEffect, useCallback } from 'react';
 import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
 import Toast from './Toast';
 import { useToast } from './ToastProvider';
-import t from '@/lib/i18n';
 
 /* ================= TYPES ================= */
-
-type Allocation = {
+interface Allocation {
   category: string;
   amount: number;
-};
+}
 
-type InitialBudget = {
+interface InitialBudget {
   month?: string;
   monthlyTotal?: number;
   allocations?: Allocation[];
-  budgetAlertThreshold?: number;
-  periodType?: 'monthly' | 'weekly' | 'custom';
-  periodStart?: string;
-  periodEnd?: string;
-};
+}
 
-type BudgetApiResponse =
-  | { error: string }
-  | {
-      budget: {
-        id?: string;
-        monthlyTotal: number;
-        allocations: Allocation[];
-        budgetAlertThreshold?: number;
-        periodType?: 'monthly' | 'weekly' | 'custom';
-        periodStart?: string;
-        periodEnd?: string;
-      };
-    };
-
-type BudgetSelectEvent = CustomEvent<{ month?: string }>;
+interface LocalToastState {
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+}
 
 /* ================= CONSTANTS ================= */
+const defaultCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
 
-const defaultCategories = [
-  'Food',
-  'Transportation',
-  'Entertainment',
-  'Shopping',
-  'Bills',
-  'Healthcare',
-  'Other',
-];
-
-/* ================= COMPONENT ================= */
-
-export default function BudgetSettings({
-  initial,
-  onClose,
-}: {
-  initial?: InitialBudget;
-  onClose?: () => void;
-}) {
-  const [month, setMonth] = useState(initial?.month || '');
+export default function BudgetSettings({ initial, onClose }: { initial?: InitialBudget; onClose?: () => void }) {
+  const [month, setMonth] = useState(initial?.month || new Date().toISOString().slice(0, 7));
   const [monthlyTotal, setMonthlyTotal] = useState(initial?.monthlyTotal || 0);
   const [allocations, setAllocations] = useState<Allocation[]>(
-    initial?.allocations ??
-      defaultCategories.map(category => ({ category, amount: 0 }))
+    initial?.allocations ?? defaultCategories.map(category => ({ category, amount: 0 }))
   );
-  const [budgetAlertThreshold, setBudgetAlertThreshold] = useState(
-    initial?.budgetAlertThreshold ?? 0.8
-  );
-  const [periodType, setPeriodType] = useState<
-    'monthly' | 'weekly' | 'custom'
-  >(initial?.periodType || 'monthly');
-  const [periodStart, setPeriodStart] = useState<string | null>(
-    initial?.periodStart || null
-  );
-  const [periodEnd, setPeriodEnd] = useState<string | null>(
-    initial?.periodEnd || null
-  );
-  const [localToast, setLocalToast] = useState<{
-    message: string;
-    type?: 'success' | 'error' | 'info' | 'warning';
-  } | null>(null);
-
+  
   const { addToast } = useToast();
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
-  const [existingBudgetId, setExistingBudgetId] = useState<string | null>(null);
+  const [localToast, setLocalToast] = useState<LocalToastState | null>(null);
 
-  /* ================= DERIVED ================= */
+  // Human-readable month display: "January 2026"
+  const displayMonth = new Date(month + "-02").toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const allocationSum = allocations.reduce((sum, a) => sum + a.amount, 0);
-  const allocationWarning = allocationSum > monthlyTotal;
-
-  /* ================= VALIDATION ================= */
-
-  const isValid = () => {
-    if (periodType === 'monthly' && (!month || monthlyTotal <= 0)) return false;
-    if (periodType === 'weekly' && (!periodStart || monthlyTotal <= 0))
-      return false;
-    if (periodType === 'custom') {
-      if (!periodStart || !periodEnd || monthlyTotal <= 0) return false;
-      if (new Date(periodEnd) < new Date(periodStart)) return false;
-    }
-    if (allocations.some(a => a.amount < 0)) return false;
-    return budgetAlertThreshold >= 0.5 && budgetAlertThreshold <= 0.8;
-  };
-
-  /* ================= SUBMIT ================= */
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!isValid()) {
-      setLocalToast({
-        message: 'Please fix validation errors before saving.',
-        type: 'error',
-      });
-      return;
-    }
-
-    if (allocationWarning) {
-      setLocalToast({
-        message: 'Total allocations exceed monthly budget!',
-        type: 'warning',
-      });
-      return;
-    }
-
-    if (existingBudgetId) {
-      const ok = window.confirm(
-        'A budget already exists for this period. Overwrite it?'
-      );
-      if (!ok) return;
-    }
-
-    const form = new FormData();
-    form.set('periodType', periodType);
-    if (periodType === 'monthly') form.set('month', month);
-    if (periodStart) form.set('periodStart', periodStart);
-    if (periodEnd) form.set('periodEnd', periodEnd);
-    form.set('monthlyTotal', monthlyTotal.toString());
-    form.set('allocations', JSON.stringify(allocations));
-    form.set('budgetAlertThreshold', budgetAlertThreshold.toString());
-
-    setIsLoadingBudget(true);
-
-    const res = (await setMonthlyBudget(form)) as BudgetApiResponse;
-
-    if ('error' in res) {
-      setLocalToast({ message: t('failedSave'), type: 'error' });
-      setIsLoadingBudget(false);
-      return;
-    }
-
-    const when =
-      periodType === 'monthly'
-        ? month
-        : periodType === 'weekly'
-        ? periodStart
-        : `${periodStart} - ${periodEnd}`;
-
-    setLocalToast({ message: t('budgetSaved'), type: 'success' });
-    addToast({
-      message: `Budget saved (${when}): ₱${monthlyTotal.toFixed(2)}`,
-      type: 'success',
-    });
-
-    window.dispatchEvent(new CustomEvent('budget:changed'));
-
-    await fetchBudget();
-    setIsLoadingBudget(false);
-
-    onClose?.();
-  };
-
-  /* ================= FETCH ================= */
+  const remainingToAllocate = monthlyTotal - allocationSum;
+  const isOverAllocated = allocationSum > monthlyTotal;
 
   const fetchBudget = useCallback(async () => {
     if (!month) return;
-
     setIsLoadingBudget(true);
-
     try {
       const res = await fetch(`/api/budget?month=${month}`);
       const data = await res.json();
-
       if (data?.budget) {
-        setExistingBudgetId(data.budget.id ?? null);
-        setMonthlyTotal(data.budget.monthlyTotal ?? 0);
-        setAllocations(
-          data.budget.allocations ??
-            defaultCategories.map(category => ({
-              category,
-              amount: 0,
-            }))
-        );
-        setBudgetAlertThreshold(data.budget.budgetAlertThreshold ?? 0.8);
-        setPeriodType(data.budget.periodType ?? 'monthly');
-        setPeriodStart(data.budget.periodStart?.slice(0, 10) ?? null);
-        setPeriodEnd(data.budget.periodEnd?.slice(0, 10) ?? null);
-      } else {
-        setExistingBudgetId(null);
+        setMonthlyTotal(data.budget.monthlyTotal || 0);
+        setAllocations(data.budget.allocations || defaultCategories.map(c => ({ category: c, amount: 0 })));
       }
+    } catch (err) {
+      console.error("Fetch error:", err);
     } finally {
       setIsLoadingBudget(false);
     }
   }, [month]);
 
-  useEffect(() => {
-    fetchBudget();
-  }, [fetchBudget]);
+  useEffect(() => { fetchBudget(); }, [fetchBudget]);
 
-  /* ================= EVENTS ================= */
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const custom = event as BudgetSelectEvent;
-      if (custom.detail?.month) setMonth(custom.detail.month);
-    };
-
-    window.addEventListener('budget:select', handler);
-    return () => window.removeEventListener('budget:select', handler);
-  }, []);
-
-  /* ================= HELPERS ================= */
-
-  const reset = () => {
-    setMonthlyTotal(0);
-    setAllocations(
-      defaultCategories.map(category => ({ category, amount: 0 }))
-    );
-    setBudgetAlertThreshold(0.8);
-    setPeriodType('monthly');
-    setPeriodStart(null);
-    setPeriodEnd(null);
+  const handleAllocationChange = (index: number, value: string) => {
+    const val = parseFloat(value) || 0;
+    setAllocations(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], amount: val };
+      return next;
+    });
   };
 
-  /* ================= JSX ================= */
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (monthlyTotal <= 0) {
+      setLocalToast({ message: 'Please set a valid total budget.', type: 'error' });
+      return;
+    }
+
+    const form = new FormData();
+    form.set('month', month);
+    form.set('monthlyTotal', monthlyTotal.toString());
+    form.set('allocations', JSON.stringify(allocations));
+    form.set('periodType', 'monthly');
+
+    setIsLoadingBudget(true);
+    const res = await setMonthlyBudget(form);
+    setIsLoadingBudget(false);
+
+    if (res && 'error' in res) {
+      addToast({ message: 'Error saving budget', type: 'error' });
+    } else {
+      addToast({ message: `Budget for ${displayMonth} updated!`, type: 'success' });
+      window.dispatchEvent(new CustomEvent('budget:changed'));
+      onClose?.();
+    }
+  };
 
   return (
-    <div>
-      <form
-        onSubmit={submit}
-        className="space-y-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow"
-      >
-        <input
-          type="month"
-          value={month}
-          onChange={e => setMonth(e.target.value)}
-          className="w-full border p-2 rounded"
-        />
+    <div className="max-w-2xl mx-auto">
+      <form onSubmit={submit} className="space-y-6">
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+          <label className="block text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
+            Target Month
+          </label>
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <input
+              type="month"
+              value={month}
+              onChange={e => setMonth(e.target.value)}
+              className="w-full sm:w-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 font-medium focus:ring-2 focus:ring-indigo-500"
+            />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Editing: <span className="text-indigo-600">{displayMonth}</span>
+            </span>
+          </div>
+        </div>
 
-        <input
-          type="number"
-          value={monthlyTotal}
-          onChange={e => setMonthlyTotal(Number(e.target.value))}
-          className="w-full border p-2 rounded"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Monthly Budget</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+              <input
+                type="number"
+                step="0.01"
+                value={monthlyTotal || ''}
+                onChange={e => setMonthlyTotal(parseFloat(e.target.value) || 0)}
+                className="w-full pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          disabled={isLoadingBudget}
-          className="px-4 py-2 bg-indigo-600 text-white rounded"
-        >
-          {isLoadingBudget ? 'Saving...' : 'Save Budget'}
-        </button>
+          <div className={`p-4 rounded-xl border flex flex-col justify-center ${isOverAllocated ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <span className="text-xs font-bold uppercase text-gray-500">Remaining to Allocate</span>
+            <span className={`text-xl font-bold ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
+              ₱{remainingToAllocate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={reset}
-          className="px-4 py-2 bg-gray-300 rounded"
-        >
-          Reset
-        </button>
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Category Breakdown</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {allocations.map((a, i) => (
+              <div key={a.category} className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl flex items-center justify-between gap-2 shadow-sm">
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 truncate">{a.category}</span>
+                <div className="relative w-28">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">₱</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={a.amount || ''}
+                    onChange={e => handleAllocationChange(i, e.target.value)}
+                    className="w-full pl-5 pr-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 border border-transparent focus:border-indigo-500 rounded-md outline-none text-right"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <button
+            type="submit"
+            disabled={isLoadingBudget || isOverAllocated}
+            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-xl transition-all shadow-lg"
+          >
+            {isLoadingBudget ? 'Processing...' : 'Save Monthly Budget'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-all"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
 
       {localToast && (
-        <Toast
-          message={localToast.message}
-          type={localToast.type}
-          onClose={() => setLocalToast(null)}
+        <Toast 
+          message={localToast.message} 
+          type={localToast.type} 
+          onClose={() => setLocalToast(null)} 
         />
       )}
     </div>

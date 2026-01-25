@@ -1,6 +1,11 @@
+'use client';
 import Link from 'next/link';
-import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignedIn, SignedOut, useUser } from '@clerk/nextjs';
+
 const Footer = () => {
+  // We use useUser to check status for the dynamic Home/Dashboard label
+  const { isSignedIn } = useUser();
+
   return (
     <footer className='relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/20 border-t border-gray-100/50 dark:border-gray-700/50'>
       {/* Gradient accent line */}
@@ -8,11 +13,12 @@ const Footer = () => {
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mb-8'>
+          
           {/* Logo and Tagline */}
           <div className='text-center md:text-left'>
             <div className='inline-flex items-center gap-2 mb-4'>
               <div className='w-8 h-8 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-                <span className='text-white text-lg'>💰</span>
+                <span className='text-white text-lg'>₱</span>
               </div>
               <h2 className='text-xl font-bold bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 bg-clip-text text-transparent'>
                 SmartJuanPeso AI
@@ -31,63 +37,67 @@ const Footer = () => {
               Quick Links
             </h3>
             <div className='flex flex-col space-y-3'>
+              {/* Always visible, but label changes */}
               <Link
                 href='/'
                 className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
               >
                 <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                Home
+                {isSignedIn ? 'Dashboard' : 'Home'}
               </Link>
+
               <SignedIn>
                 <Link
                   href='/budget'
                   className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
                 >
                   <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  Budget
-                </Link></SignedIn>
+                  Planner
+                </Link>
+              </SignedIn>
+
               <SignedOut>
                 <Link
                   href='/about'
                   className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
                 >
                   <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  About
+                  Features
                 </Link>
                 <Link
                   href='/contact'
                   className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
                 >
                   <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  Contact
+                  Support
                 </Link>
               </SignedOut>
             </div>
           </div>
 
-          {/* Features */}
+          {/* Features / Value Prop */}
           <div className='text-center md:text-left'>
             <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
-              Features
+              Why SmartJuanPeso?
             </h3>
             <div className='space-y-3'>
               <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
                 <div className='w-5 h-5 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-xs'>🤖</span>
+                  <span className='text-white text-[10px]'>🤖</span>
                 </div>
                 AI-Powered Insights
               </div>
               <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
                 <div className='w-5 h-5 bg-gradient-to-br from-blue-500 to-teal-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-xs'>✨</span>
+                  <span className='text-white text-[10px]'>✨</span>
                 </div>
                 Smart Categorization
               </div>
               <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
                 <div className='w-5 h-5 bg-gradient-to-br from-teal-500 to-indigo-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-xs'>📊</span>
+                  <span className='text-white text-[10px]'>📈</span>
                 </div>
-                Analytics Dashboard
+                Real-time Analytics
               </div>
             </div>
           </div>
@@ -97,11 +107,10 @@ const Footer = () => {
         <div className='w-full h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-8'></div>
 
         {/* Copyright and Social */}
-        <div className='flex flex-col md:flex-row justify-between items-center'>
-          <div className='text-center md:text-left mb-4 md:mb-0'>
-            <p className='text-gray-500 dark:text-gray-400 text-sm'>
-              © {new Date().getFullYear()} SmartJuanPeso AI. All rights
-              reserved.
+        <div className='flex flex-col md:flex-row justify-between items-center gap-4'>
+          <div className='text-center md:text-left'>
+            <p className='text-gray-500 dark:text-gray-400 text-xs'>
+              © {new Date().getFullYear()} SmartJuanPeso AI. Built for financial freedom.
             </p>
           </div>
 

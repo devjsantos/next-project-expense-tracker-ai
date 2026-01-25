@@ -12,7 +12,7 @@ import AuthRefreshOnSignIn from '@/components/AuthRefreshOnSignIn';
 
 export default async function HomePage() {
   const user = await checkUser();
-  console.log('checkUser:', user);
+  // console.log('checkUser:', user);
 
   if (!user) {
     // Render `Guest` and include a small client helper that will reload

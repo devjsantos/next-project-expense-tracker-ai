@@ -1,7 +1,7 @@
  'use server';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
+import { db } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 
 export async function GET(req: Request) {
