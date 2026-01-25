@@ -26,7 +26,7 @@ export default function AuthRefreshOnSignIn() {
             window.location.replace(window.location.href);
             return;
           }
-        } catch (e) {
+        } catch {
           // ignore and retry
         }
 

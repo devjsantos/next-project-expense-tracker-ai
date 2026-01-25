@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { userId } = await auth();
     return NextResponse.json({ signedIn: !!userId });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ signedIn: false });
   }
 }
