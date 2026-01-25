@@ -10,7 +10,7 @@ type BudgetItem = {
   allocations: Allocation[];
 };
 
-export default function BudgetHistory({ budgets }: { budgets: BudgetItem[] }) {
+export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] }) {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,29 +18,30 @@ export default function BudgetHistory({ budgets }: { budgets: BudgetItem[] }) {
   // Sync with global budget selection events
   useEffect(() => {
     const handler = (e: Event) => {
-      const m = (e as CustomEvent)?.detail?.month;
+      // Use type narrowing to avoid 'any'
+      const customEvent = e as CustomEvent<{ month: string }>;
+      const m = customEvent.detail?.month;
       if (m) setSelectedMonth(m);
     };
-    window.addEventListener('budget:select', handler as EventListener);
-    return () => window.removeEventListener('budget:select', handler as EventListener);
+    window.addEventListener('budget:select', handler);
+    return () => window.removeEventListener('budget:select', handler);
   }, []);
 
   const handleSelectMonth = (monthIso: string) => {
     const month = monthIso.slice(0, 7); // Format: YYYY-MM
     setSelectedMonth(month);
     
-    // Dispatch to global listeners (BudgetOverview & BudgetSettings)
     window.dispatchEvent(new CustomEvent('budget:select', { 
       detail: { month } 
     }));
   };
 
-  // Filter budgets based on search (Future-proofing for long history)
   const filteredBudgets = budgets.filter(b => {
     const dateStr = new Date(b.monthStart).toLocaleString('default', { month: 'long', year: 'numeric' });
     return dateStr.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
+  // FIX: Moved the early return AFTER all hooks
   if (!budgets || budgets.length === 0) {
     return (
       <div className="p-6 bg-white/80 dark:bg-gray-800/80 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
@@ -62,7 +63,6 @@ export default function BudgetHistory({ budgets }: { budgets: BudgetItem[] }) {
         </span>
       </div>
 
-      {/* Search Bar - Scalability feature */}
       <div className="mb-4">
         <input 
           type="text"
@@ -73,7 +73,7 @@ export default function BudgetHistory({ budgets }: { budgets: BudgetItem[] }) {
         />
       </div>
 
-      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
         {filteredBudgets.map((b) => {
           const monthKey = new Date(b.monthStart).toISOString().slice(0, 7);
           const isSelected = selectedMonth === monthKey;
@@ -104,29 +104,22 @@ export default function BudgetHistory({ budgets }: { budgets: BudgetItem[] }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : b.id)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      isExpanded 
-                        ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600' 
-                        : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    title="View Allocations"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : b.id)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isExpanded 
+                      ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600' 
+                      : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
               </div>
 
-              {/* Collapsible Allocations */}
               {isExpanded && (
                 <div className="px-3 pb-3 pt-1 animate-in slide-in-from-top-2 duration-200">
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-2">
-                    Allocation Breakdown
-                  </div>
                   <div className="grid grid-cols-1 gap-1.5">
                     {b.allocations.map((a) => (
                       <div

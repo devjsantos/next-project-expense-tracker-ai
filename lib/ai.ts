@@ -60,9 +60,10 @@ function isRateLimitError(error: unknown): error is { code: number } {
 }
 
 function normalizeInsightType(value: unknown): InsightType {
-  return INSIGHT_TYPES.includes(value as InsightType)
-    ? (value as InsightType)
-    : 'info';
+  if (typeof value === 'string' && INSIGHT_TYPES.includes(value as InsightType)) {
+    return value as InsightType;
+  }
+  return 'info';
 }
 
 async function safeOpenAIRequest<T>(
@@ -156,10 +157,10 @@ ${JSON.stringify(summary, null, 2)}`;
     return insights.map((insight, index): AIInsight => ({
       id: `ai-${Date.now()}-${index}`,
       type: normalizeInsightType(insight.type),
-      title: insight.title ?? 'AI Insight',
-      message: insight.message ?? 'Analysis complete',
-      action: insight.action,
-      confidence: insight.confidence ?? 0.8,
+      title: typeof insight.title === 'string' ? insight.title : 'AI Insight',
+      message: typeof insight.message === 'string' ? insight.message : 'Analysis complete',
+      action: typeof insight.action === 'string' ? insight.action : undefined,
+      confidence: typeof insight.confidence === 'number' ? insight.confidence : 0.8,
     }));
   } catch (error: unknown) {
     console.error('❌ Error generating AI insights:', error);
