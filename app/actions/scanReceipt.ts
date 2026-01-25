@@ -5,16 +5,17 @@ import { analyzeReceiptImage } from '@/lib/ai';
 export async function scanReceipt(formData: FormData) {
   try {
     const file = formData.get('image') as File;
-    if (!file) throw new Error('No image file found');
-
-    // Validate file size (e.g., max 4MB)
-    if (file.size > 4 * 1024 * 1024) {
-      throw new Error('Image is too large. Please take a smaller photo.');
+    if (!file) {
+      console.error("No file found in FormData");
+      return { success: false, error: 'No image detected.' };
     }
 
+    // Convert to Buffer
     const arrayBuffer = await file.arrayBuffer();
-    const base64Image = Buffer.from(arrayBuffer).toString('base64');
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = buffer.toString('base64');
 
+    // Call your AI library
     const result = await analyzeReceiptImage(base64Image, file.type);
 
     return {
@@ -23,10 +24,12 @@ export async function scanReceipt(formData: FormData) {
       error: null,
     };
   } catch (error: any) {
+    // This logs to your Vercel logs/Terminal, not the browser console
+    console.error('SERVER ACTION ERROR:', error); 
     return {
       success: false,
       data: null,
-      error: error.message || 'Failed to process receipt',
+      error: error.message || 'AI failed to process the image.',
     };
   }
 }
