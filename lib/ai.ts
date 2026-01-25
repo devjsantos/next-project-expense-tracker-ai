@@ -250,3 +250,47 @@ Respond in 2–3 sentences.`;
     return 'Unable to answer at the moment. Please try again later.';
   }
 }
+/* ================= RECEIPT SCANNING ================= */
+
+export async function analyzeReceiptImage(base64Image: string, mimeType: string) {
+  try {
+    const prompt = `Analyze this receipt image. 
+    Return ONLY a JSON object with these fields:
+    {
+      "amount": number (total amount),
+      "description": string (store name or main item),
+      "category": "Food" | "Transportation" | "Shopping" | "Entertainment" | "Bills" | "Healthcare" | "Other"
+    }`;
+
+    const completion = await safeOpenAIRequest(() =>
+      openai.chat.completions.create({
+        model: 'google/gemini-flash-1.5', // Best model for Vision + Speed
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`,
+                },
+              },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      })
+    );
+
+    const content = completion.choices[0].message.content;
+    if (!content) throw new Error('No response from AI');
+
+    const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (error) {
+    console.error('❌ Error analyzing receipt:', error);
+    throw error;
+  }
+}
