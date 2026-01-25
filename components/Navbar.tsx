@@ -1,364 +1,235 @@
 'use client';
 
-import { SignInButton, SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+import {
+  SignInButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useUser,
+} from '@clerk/nextjs';
 import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useEffect, useState } from 'react';
 import NotificationCenter from '@/components/NotificationCenter';
 
+/* ================== TYPES ================== */
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+declare global {
+  interface Window {
+    __fetchNotificationsUnread?: () => Promise<void>;
+  }
+}
+
+/* ================= COMPONENT ================= */
+
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const { isSignedIn } = useUser();
 
-  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const toggleMobileMenu = () =>
+    setIsMobileMenuOpen(prev => !prev);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // ✅ Handle install prompt setup
+  /* ===== INSTALL PROMPT ===== */
+
   useEffect(() => {
-    const handler = (e: Event) => {
-      console.log("🟢 beforeinstallprompt fired");
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    const handler = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
       setShowInstall(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () =>
+      window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // fetch unread count only when signed in
+  /* ===== NOTIFICATIONS ===== */
+
   useEffect(() => {
     if (!isSignedIn) return;
+
     let mounted = true;
 
-    async function fetchUnread() {
+    const fetchUnread = async () => {
       try {
         const res = await fetch('/api/notifications?unread=true');
-        const json = await res.json();
-        if (mounted) setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
-      } catch (e) {
-        console.error('Failed to fetch unread count', e);
-      }
-    }
+        const json: { notifications?: unknown[] } = await res.json();
 
-    // expose a stable fetch for use elsewhere
-    (window as any).__fetchNotificationsUnread = fetchUnread;
+        if (mounted) {
+          setUnreadCount(
+            Array.isArray(json.notifications)
+              ? json.notifications.length
+              : 0
+          );
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread count', err);
+      }
+    };
+
+    window.__fetchNotificationsUnread = fetchUnread;
 
     fetchUnread();
-    const id = setInterval(fetchUnread, 30000);
+    const intervalId = setInterval(fetchUnread, 30_000);
 
-    // listen for notification changes from other components
-    const handler = () => fetchUnread();
-    window.addEventListener('notifications:changed', handler as EventListener);
+    const notificationHandler = () => fetchUnread();
+    window.addEventListener(
+      'notifications:changed',
+      notificationHandler
+    );
 
     return () => {
       mounted = false;
-      clearInterval(id);
-      window.removeEventListener('notifications:changed', handler as EventListener);
-      try { delete (window as any).__fetchNotificationsUnread; } catch {};
+      clearInterval(intervalId);
+      window.removeEventListener(
+        'notifications:changed',
+        notificationHandler
+      );
+      delete window.__fetchNotificationsUnread;
     };
   }, [isSignedIn]);
 
+  /* ===== INSTALL CLICK ===== */
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
+
     await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('✅ User accepted install');
-    } else {
-      console.log('❌ User dismissed install');
-    }
+    await deferredPrompt.userChoice;
+
     setDeferredPrompt(null);
     setShowInstall(false);
   };
+
+  /* ================= JSX ================= */
+
   return (
-    <nav className='sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-600/50 shadow-lg shadow-gray-900/5 dark:shadow-black/30'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className='flex items-center justify-between h-14 sm:h-16'>
-          {/* Logo Section */}
-          <div className="flex items-center">
-            <Link
-              href="/"
-              className="flex items-center gap-2 sm:gap-3 flex-shrink-0 group transition-all duration-300 hover:scale-105"
-              onClick={closeMobileMenu}
-            >
-              {/* Optional background (blue gradient instead of blue) */}
-              {/* <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3 bg-gradient-to-br from-gray-300 via-gray-100 to-white dark:from-gray-400 dark:via-gray-300 dark:to-gray-100">
-                <div className="relative w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8">
-                  <Image
-                    src="/sjp-logo.svg"
-                    alt="SmartJuanPeso AI Logo"
-                    fill
-                    sizes="(max-width: 768px) 32px, (max-width: 1024px) 40px, 48px"
-                    priority
-                    className="object-contain filter dark:backdrop-invert-0"
-                  />
-                </div>
-              </div> */}
+    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-600/50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-14">
+          {/* Logo */}
+          <Link href="/" onClick={closeMobileMenu}>
+            <span className="font-bold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+              SmartJuanPeso AI
+            </span>
+          </Link>
 
-              {/* Brand Name with blue gradient instead of blue */}
-              <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-300 dark:to-blue-200">
-                <span className="hidden sm:inline">SmartJuanPeso AI</span>
-                <span className="sm:hidden">SmartJuanPeso AI</span>
-              </span>
-            </Link>
-          </div>
-          {/* Desktop Navigation Links */}
-          <div className='hidden md:flex items-center space-x-1'>
-            <Link
-              href='/'
-              className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-            >
-              <span className='relative z-10'>Home</span>
-              <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center gap-4">
+            <Link href="/" className="nav-link">
+              Home
             </Link>
 
-            {/* Dashboard removed per request */}
-            <SignedOut>
-              <Link
-                href='/about'
-                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-              >
-                <span className='relative z-10'>About</span>
-                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-              </Link>
-            </SignedOut>
             <SignedIn>
-              <Link
-                href='/budget'
-                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-              >
-                <span className='relative z-10'>Budget</span>
-                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+              <Link href="/budget" className="nav-link">
+                Budget
               </Link>
             </SignedIn>
-            <SignedOut>
-              <Link
-                href='/contact'
-                className='relative text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group'
-              >
-                <span className='relative z-10'>Contact</span>
-                <div className='absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-              </Link></SignedOut>
           </div>
 
           {/* Right Section */}
-          <div className='flex items-center space-x-1 sm:space-x-2'>
-            {/* Theme Toggle */}
-            <div className='p-0.5 sm:p-1'>
-              <ThemeToggle />
-            </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
 
             <SignedIn>
-              {/* Notifications Icon */}
-              <div className='relative'>
+              <div className="relative">
                 <button
-                  onClick={() => {
-                    setShowNotifications(s => {
-                      const next = !s;
-                      if (next) {
-                        // fetch unread immediately when opening
-                        try { (window as any).__fetchNotificationsUnread?.(); } catch (e) { /* ignore */ }
+                  onClick={() =>
+                    setShowNotifications(open => {
+                      if (!open) {
+                        window.__fetchNotificationsUnread?.();
                       }
-                      return next;
-                    });
-                  }}
-                  className='p-1 rounded-full hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition'
-                  aria-label='Notifications'
+                      return !open;
+                    })
+                  }
+                  className="p-2 rounded-full"
                 >
-                  <svg className='w-5 h-5 text-gray-600 dark:text-gray-300' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' />
-                  </svg>
+                  🔔
                 </button>
-                {unreadCount && unreadCount > 0 ? (
-                  <div className='absolute -top-1 -right-1 bg-rose-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center'>
+
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
-                  </div>
-                ) : null}
+                  </span>
+                )}
+
                 {showNotifications && (
-                  <div className='absolute right-0 mt-2'>
+                  <div className="absolute right-0 mt-2">
                     <NotificationCenter />
                   </div>
                 )}
               </div>
             </SignedIn>
 
-            {/* Authentication - Desktop */}
-            <div className='hidden sm:block'>
-              <SignedOut>
-                <SignInButton>
-                  <button className='relative overflow-hidden bg-gradient-to-r from-indigo-500 via-blue-500 to-teal-500 hover:from-indigo-600 hover:via-blue-600 hover:to-teal-600 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95'>
-                    <div className='relative z-10 flex items-center gap-1 sm:gap-2'>
-                      <span>Sign In</span>
-                      <svg
-                        className='w-3 h-3 sm:w-4 sm:h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1'
-                        />
-                      </svg>
-                    </div>
-                    <div className='absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300'></div>
-                  </button>
-                </SignInButton>
-              </SignedOut>
-
-              <SignedIn>
-                <div className='p-0.5 sm:p-1 rounded-lg sm:rounded-xl bg-gradient-to-r from-indigo-100/50 to-blue-100/50 dark:from-indigo-900/20 dark:to-blue-900/20 backdrop-blur-sm border border-indigo-200/30 dark:border-indigo-700/30'>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox:
-                          'w-6 h-6 sm:w-8 sm:h-8 hover:scale-110 transition-transform duration-200',
-                        userButtonBox: 'flex items-center justify-center',
-                      },
-                    }}
-                  />
-                </div>
-              </SignedIn>
-            </div>
-
-            <div className='p-0.5 sm:p-1'>
-              {showInstall && (
-                <button
-                  onClick={handleInstallClick}
-                  className='my-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-md transition-all duration-200'
-                >
-                  Install App
+            <SignedOut>
+              <SignInButton>
+                <button className="px-3 py-2 bg-indigo-600 text-white rounded">
+                  Sign In
                 </button>
-              )}
-            </div>
+              </SignInButton>
+            </SignedOut>
 
-            {/* Mobile Menu Button */}
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+
+            {showInstall && (
+              <button
+                onClick={handleInstallClick}
+                className="px-3 py-2 bg-emerald-500 text-white rounded"
+              >
+                Install App
+              </button>
+            )}
+
+            {/* Mobile Toggle */}
             <button
               onClick={toggleMobileMenu}
-              className='md:hidden p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-200 active:scale-95'
-              aria-label='Toggle mobile menu'
+              className="md:hidden p-2"
             >
-              <svg
-                className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-90' : ''
-                  }`}
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                {isMobileMenuOpen ? (
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M6 18L18 6M6 6l12 12'
-                  />
-                ) : (
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M4 6h16M4 12h16M4 18h16'
-                  />
-                )}
-              </svg>
+              ☰
             </button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         <div
-          className={`md:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
-            ? 'max-h-96 opacity-100 pb-3 sm:pb-4'
-            : 'max-h-0 opacity-0 overflow-hidden'
-            }`}
+          className={`md:hidden transition-all duration-300 ${
+            isMobileMenuOpen
+              ? 'max-h-40 opacity-100'
+              : 'max-h-0 opacity-0 overflow-hidden'
+          }`}
         >
-          <div className='px-2 pt-2 pb-3 space-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/50 dark:border-gray-600/50 mt-2 shadow-lg'>
-            {/* Mobile Navigation Links */}
+          <div className="mt-2 rounded-lg border p-2 space-y-1 bg-white dark:bg-gray-800">
             <Link
-              href='/'
-              className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
+              href="/"
               onClick={closeMobileMenu}
+              className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <span className='text-base'>🏠</span>
-              <span>Home</span>
+              Home
             </Link>
-            <SignedOut>
-              <Link
-                href='/about'
-                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
-                onClick={closeMobileMenu}
-              >
-                <span className='text-base'>ℹ️</span>
-                <span>About</span>
-              </Link>
 
-              <Link
-                href='/contact'
-                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
-                onClick={closeMobileMenu}
-              >
-                <span className='text-base'>📞</span>
-                <span>Contact</span>
-              </Link>
-            </SignedOut>
             <SignedIn>
               <Link
-                href='/budget'
-                className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all duration-200 active:scale-95'
+                href="/budget"
                 onClick={closeMobileMenu}
+                className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <span className='text-base'>💰</span>
-                <span>Budget</span>
+                Budget
               </Link>
             </SignedIn>
-
-            {/* Mobile Authentication */}
-            <div className='pt-3 border-t border-gray-200/50 dark:border-gray-600/50'>
-              <SignedOut>
-                <SignInButton>
-                  <button
-                    className='w-full bg-gradient-to-r from-indigo-500 via-blue-500 to-teal-500 hover:from-indigo-600 hover:via-blue-600 hover:to-teal-600 text-white px-4 py-3 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 active:scale-95'
-                    onClick={closeMobileMenu}
-                  >
-                    <span>Sign In</span>
-                    <svg
-                      className='w-4 h-4'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1'
-                      />
-                    </svg>
-                  </button>
-                </SignInButton>
-              </SignedOut>
-
-              <SignedIn>
-                <div className='flex items-center justify-center p-3 rounded-xl bg-gradient-to-r from-indigo-100/50 to-blue-100/50 dark:from-indigo-900/20 dark:to-blue-900/20 backdrop-blur-sm border border-indigo-200/30 dark:border-indigo-700/30'>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox:
-                          'w-8 h-8 hover:scale-110 transition-transform duration-200',
-                        userButtonBox: 'flex items-center justify-center',
-                      },
-                    }}
-                  />
-                </div>
-              </SignedIn>
-            </div>
           </div>
         </div>
       </div>
