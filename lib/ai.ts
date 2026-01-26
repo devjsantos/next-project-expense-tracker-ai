@@ -254,13 +254,14 @@ Respond in 2–3 sentences.`;
 
 export async function analyzeReceiptImage(base64Image: string, mimeType: string) {
   try {
-    const prompt = `Analyze this receipt image. 
-    Return ONLY a JSON object with these fields:
+    const prompt = `Analyze this image (it could be a store receipt or a utility bill).
+    Extract the following into a JSON object:
     {
-      "amount": number (total amount),
-      "description": string (store name or main item),
-      "category": "Food" | "Transportation" | "Shopping" | "Entertainment" | "Bills" | "Healthcare" | "Other"
-    }`;
+      "amount": number (Look for 'Total Amount Due' or 'Grand Total'),
+      "description": string (e.g., 'Electric Bill', 'Water Bill', or the Merchant name),
+      "category": "Bills" (If it's a utility bill) or "Food|Transportation|Shopping|Other"
+    }
+    Return ONLY the JSON.`;
 
     const completion = await safeOpenAIRequest(() =>
       openai.chat.completions.create({
