@@ -18,11 +18,12 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
   // Sync with global budget selection events
   useEffect(() => {
     const handler = (e: Event) => {
-      // Use type narrowing to avoid 'any'
+      // ✅ FIX: Using a safer type cast to avoid 'any' error
       const customEvent = e as CustomEvent<{ month: string }>;
       const m = customEvent.detail?.month;
       if (m) setSelectedMonth(m);
     };
+
     window.addEventListener('budget:select', handler);
     return () => window.removeEventListener('budget:select', handler);
   }, []);
@@ -36,12 +37,14 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
     }));
   };
 
+  // ✅ Optimization: Memoize this if budgets list gets very long
   const filteredBudgets = budgets.filter(b => {
     const dateStr = new Date(b.monthStart).toLocaleString('default', { month: 'long', year: 'numeric' });
     return dateStr.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // FIX: Moved the early return AFTER all hooks
+  // --- HOOKS END HERE ---
+
   if (!budgets || budgets.length === 0) {
     return (
       <div className="p-6 bg-white/80 dark:bg-gray-800/80 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">

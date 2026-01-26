@@ -19,6 +19,11 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+// ✅ Added Notification type to replace 'any'
+interface NotificationResponse {
+  notifications: unknown[];
+}
+
 /* ================= COMPONENT ================= */
 
 export default function Navbar() {
@@ -36,6 +41,7 @@ export default function Navbar() {
   useEffect(() => {
     const handler = (event: Event) => {
       event.preventDefault();
+      // ✅ Using type assertion correctly
       setDeferredPrompt(event as BeforeInstallPromptEvent);
       setShowInstall(true);
     };
@@ -60,9 +66,10 @@ export default function Navbar() {
     const fetchUnread = async () => {
       try {
         const res = await fetch('/api/notifications?unread=true');
-        const json = await res.json();
+        // ✅ Specified type for JSON response
+        const json = (await res.json()) as NotificationResponse;
         setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Unread fetch failed', err);
       }
     };
@@ -77,7 +84,6 @@ export default function Navbar() {
     };
   }, [isSignedIn]);
 
-  // Helper component to render links based on auth state
   const NavItems = () => (
     <>
       <Link 
@@ -122,7 +128,6 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          {/* Left: Logo & Desktop Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" onClick={closeMobileMenu} className="flex items-center gap-2 group">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
@@ -133,13 +138,11 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-1 text-gray-600 dark:text-gray-300">
               <NavItems />
             </div>
           </div>
 
-          {/* Right: Actions */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
@@ -163,7 +166,7 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
             </SignedIn>
 
             <SignedOut>
@@ -183,7 +186,6 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* Mobile Menu Toggle */}
             <button
               onClick={toggleMobileMenu}
               className="md:hidden p-2 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -194,7 +196,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 ${
           isMobileMenuOpen ? 'max-h-80' : 'max-h-0'

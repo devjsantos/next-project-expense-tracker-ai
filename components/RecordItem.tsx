@@ -6,6 +6,12 @@ import deleteRecord from '@/app/actions/deleteRecord';
 import updateRecord from '@/app/actions/updateRecord';
 import { useToast } from '@/components/ToastProvider';
 
+// Define the shape of alerts from your updateRecord action
+interface BudgetAlert {
+  type: 'warning' | 'info' | 'success';
+  message: string;
+}
+
 interface RecordItemProps {
   record: MyExpenseRecord;
   isManageMode: boolean;
@@ -33,16 +39,15 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
       const result = await deleteRecord(record.id);
 
       if (result?.error) {
-        // FIX: Using a type guard or string coercion to satisfy TypeScript
-        const errorObj = result.error as any;
-        const errorMessage = errorObj?.message || String(result.error);
-        addToast(errorMessage, 'error');
+        // ✅ Removed 'any' cast. result.error is already a string based on your action types.
+        addToast(String(result.error), 'error');
       } else {
         addToast('Record deleted successfully', 'success');
         onRefresh();
         window.dispatchEvent(new CustomEvent('budget:changed'));
       }
-    } catch (err) {
+    } catch {
+      // ✅ Removed unused 'err'
       addToast('Failed to delete record', 'error');
     } finally {
       setIsDeleting(false);
@@ -71,10 +76,8 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
       const result = await updateRecord(payload);
 
       if (result?.error) {
-        // FIX: Safe error extraction
-        const errorObj = result.error as any;
-        const msg = errorObj?.message || String(result.error);
-        addToast(`Update Failed: ${msg}`, 'error');
+        // ✅ Safely extract error string
+        addToast(`Update Failed: ${result.error}`, 'error');
       } else {
         addToast('Updated successfully!', 'success');
         setIsEditModalOpen(false);
@@ -83,23 +86,23 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
         window.dispatchEvent(new CustomEvent('records:changed'));
         window.dispatchEvent(new CustomEvent('budget:changed'));
 
+        // ✅ Typed the alert loop to avoid 'any'
         if (result.alerts && result.alerts.length > 0) {
-          result.alerts.forEach((alertItem: any) => {
-            addToast(alertItem.message, alertItem.type as any);
+          result.alerts.forEach((alertItem: BudgetAlert) => {
+            addToast(alertItem.message, alertItem.type);
           });
         }
       }
-    } catch (err) {
+    } catch {
+       // ✅ Removed unused 'err'
       addToast("Connection error. Try again.", 'error');
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // ... rest of your return JSX remains the same ...
   return (
     <>
-      {/* Transaction Row */}
       <div className="group flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/30 hover:bg-white dark:hover:bg-gray-800 rounded-2xl transition-all border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-700 flex items-center justify-center text-lg shadow-sm">
@@ -209,7 +212,7 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
 };
 
 const getCategoryEmoji = (cat: string) => {
-  const emojis: { [key: string]: string } = {
+  const emojis: Record<string, string> = {
     'Food': '🍔', 'Transportation': '🚗', 'Shopping': '🛒', 'Bills': '💡',
     'Entertainment': '🎬', 'Healthcare': '🏥', 'Other': '📦'
   };

@@ -74,7 +74,6 @@ export default async function updateRecord(payload: {
       where: { userId, monthStart },
       include: {
         allocations: true,
-        user: true,
       },
     });
 
@@ -85,7 +84,7 @@ export default async function updateRecord(payload: {
         where: {
           userId,
           date: { gte: monthStart, lt: monthEnd },
-          NOT: { id },
+          NOT: { id }, // Exclude current record to check potential total
         },
         _sum: { amount: true },
       });
@@ -115,7 +114,7 @@ export default async function updateRecord(payload: {
         }
       }
 
-      // Explicitly cast the included allocations to our interface
+      // Safe Type Casting
       const allocations = budget.allocations as unknown as BudgetAllocation[];
       const alloc = allocations.find(a => a.category === category);
 
@@ -142,9 +141,14 @@ export default async function updateRecord(payload: {
       }
     }
 
-    if (alerts.length) {
+    // Persist Notifications
+    if (alerts.length > 0) {
       try {
-        const { default: createNotification } = await import('@/app/actions/createNotification');
+        // We type the dynamic import to prevent "any" errors
+        const { default: createNotification } = (await import('@/app/actions/createNotification')) as {
+            default: (uId: string, type: string, title: string, msg: string) => Promise<void>
+        };
+        
         await createNotification(
           userId,
           'warning',
