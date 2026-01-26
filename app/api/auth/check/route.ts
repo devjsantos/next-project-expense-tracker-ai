@@ -6,6 +6,7 @@ export async function GET() {
     const { userId } = await auth();
     return NextResponse.json({ signedIn: !!userId });
   } catch {
+    // No 'e' defined, so no unused variable warning
     return NextResponse.json({ signedIn: false });
   }
 }

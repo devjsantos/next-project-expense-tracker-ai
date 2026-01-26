@@ -26,6 +26,14 @@ interface BudgetAllocation {
   budgetId: string;
 }
 
+// Define the shape of the notification action to avoid "any"
+type CreateNotificationFn = (
+  uId: string,
+  type: string,
+  title: string,
+  msg: string
+) => Promise<void>;
+
 /* ============== ACTION ================= */
 
 export default async function updateRecord(payload: {
@@ -63,7 +71,12 @@ export default async function updateRecord(payload: {
 
     const updated = await db.records.update({
       where: { id },
-      data: { text, amount, category, date },
+      data: { 
+        text, 
+        amount, 
+        category, 
+        date: new Date(date) // Ensure date is a Date object for Prisma
+      },
     });
 
     const dateObj = new Date(date);
@@ -84,7 +97,7 @@ export default async function updateRecord(payload: {
         where: {
           userId,
           date: { gte: monthStart, lt: monthEnd },
-          NOT: { id }, // Exclude current record to check potential total
+          NOT: { id },
         },
         _sum: { amount: true },
       });
@@ -114,7 +127,7 @@ export default async function updateRecord(payload: {
         }
       }
 
-      // Safe Type Casting
+      // Casting from Prisma's generated type to our specific interface
       const allocations = budget.allocations as unknown as BudgetAllocation[];
       const alloc = allocations.find(a => a.category === category);
 
@@ -144,10 +157,12 @@ export default async function updateRecord(payload: {
     // Persist Notifications
     if (alerts.length > 0) {
       try {
-        // We type the dynamic import to prevent "any" errors
-        const { default: createNotification } = (await import('@/app/actions/createNotification')) as {
-            default: (uId: string, type: string, title: string, msg: string) => Promise<void>
+        // Specifically typing the dynamic import result to satisfy ESLint
+        const notificationModule = (await import('@/app/actions/createNotification')) as {
+          default: CreateNotificationFn;
         };
+        
+        const createNotification = notificationModule.default;
         
         await createNotification(
           userId,

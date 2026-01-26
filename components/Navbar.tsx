@@ -8,20 +8,31 @@ import {
   useUser,
 } from '@clerk/nextjs';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationCenter from '@/components/NotificationCenter';
 
 /* ================== TYPES ================== */
 
+/**
+ * PWA Install Prompt Event Interface
+ */
 interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
   prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-// ✅ Added Notification type to replace 'any'
+interface NotificationItem {
+  id: string;
+  // Add other properties if you plan to use them
+}
+
 interface NotificationResponse {
-  notifications: unknown[];
+  notifications: NotificationItem[];
 }
 
 /* ================= COMPONENT ================= */
@@ -41,12 +52,12 @@ export default function Navbar() {
   useEffect(() => {
     const handler = (event: Event) => {
       event.preventDefault();
-      // ✅ Using type assertion correctly
       setDeferredPrompt(event as BeforeInstallPromptEvent);
       setShowInstall(true);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    
+    window.addEventListener('beforeinstallprompt', handler as EventListener);
+    return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
   }, []);
 
   const handleInstallClick = async () => {
@@ -60,19 +71,19 @@ export default function Navbar() {
   };
 
   /* ===== NOTIFICATIONS LOGIC ===== */
+  const fetchUnread = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const res = await fetch('/api/notifications?unread=true');
+      const json = (await res.json()) as NotificationResponse;
+      setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
+    } catch (err: unknown) {
+      console.error('Unread fetch failed', err);
+    }
+  }, [isSignedIn]);
+
   useEffect(() => {
     if (!isSignedIn) return;
-
-    const fetchUnread = async () => {
-      try {
-        const res = await fetch('/api/notifications?unread=true');
-        // ✅ Specified type for JSON response
-        const json = (await res.json()) as NotificationResponse;
-        setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
-      } catch (err: unknown) {
-        console.error('Unread fetch failed', err);
-      }
-    };
 
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
@@ -82,7 +93,7 @@ export default function Navbar() {
       clearInterval(interval);
       window.removeEventListener('notifications:changed', fetchUnread);
     };
-  }, [isSignedIn]);
+  }, [isSignedIn, fetchUnread]);
 
   const NavItems = () => (
     <>
@@ -106,14 +117,14 @@ export default function Navbar() {
 
       <SignedOut>
         <Link 
-          href="/about" 
+          href="/features" 
           onClick={closeMobileMenu} 
           className="nav-link px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
         >
           Features
         </Link>
         <Link 
-          href="/contact" 
+          href="/support" 
           onClick={closeMobileMenu} 
           className="nav-link px-3 py-2 text-sm font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
         >
@@ -129,7 +140,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
 
           <div className="flex items-center gap-8">
-            <Link href="/" onClick={closeMobileMenu} className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center gap-2 group">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
                 <span className="text-white text-sm">₱</span>
               </div>
@@ -161,7 +172,7 @@ export default function Navbar() {
                 </button>
 
                 {showNotifications && (
-                  <div className="absolute right-0 mt-3 w-80 shadow-2xl rounded-xl ring-1 ring-black/5 dark:ring-white/10">
+                  <div className="absolute right-0 mt-3 w-80 shadow-2xl rounded-xl ring-1 ring-black/5 dark:ring-white/10 bg-white dark:bg-gray-900">
                     <NotificationCenter />
                   </div>
                 )}

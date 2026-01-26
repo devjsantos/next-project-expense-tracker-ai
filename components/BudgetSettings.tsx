@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
 import Toast from './Toast';
 import { useToast } from './ToastProvider';
@@ -22,6 +22,15 @@ interface LocalToastState {
   type: 'success' | 'error' | 'warning' | 'info';
 }
 
+// Added specific interface for API responses to avoid 'any'
+interface BudgetApiResponse {
+  budget?: {
+    monthlyTotal: number;
+    allocations: Allocation[];
+  };
+  error?: string;
+}
+
 /* ================= CONSTANTS ================= */
 const defaultCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
 
@@ -36,8 +45,10 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [localToast, setLocalToast] = useState<LocalToastState | null>(null);
 
-  // Human-readable month display: "January 2026"
-  const displayMonth = new Date(month + "-02").toLocaleString('default', { month: 'long', year: 'numeric' });
+  // Human-readable month display
+  const displayMonth = useMemo(() => {
+    return new Date(month + "-02").toLocaleString('default', { month: 'long', year: 'numeric' });
+  }, [month]);
 
   const allocationSum = allocations.reduce((sum, a) => sum + a.amount, 0);
   const remainingToAllocate = monthlyTotal - allocationSum;
@@ -48,7 +59,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     setIsLoadingBudget(true);
     try {
       const res = await fetch(`/api/budget?month=${month}`);
-      const data = await res.json();
+      const data: BudgetApiResponse = await res.json(); // Fixed: Added explicit type
       if (data?.budget) {
         setMonthlyTotal(data.budget.monthlyTotal || 0);
         setAllocations(data.budget.allocations || defaultCategories.map(c => ({ category: c, amount: 0 })));
@@ -60,7 +71,9 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     }
   }, [month]);
 
-  useEffect(() => { fetchBudget(); }, [fetchBudget]);
+  useEffect(() => { 
+    fetchBudget(); 
+  }, [fetchBudget]);
 
   const handleAllocationChange = (index: number, value: string) => {
     const val = parseFloat(value) || 0;
@@ -85,15 +98,19 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     form.set('periodType', 'monthly');
 
     setIsLoadingBudget(true);
-    const res = await setMonthlyBudget(form);
-    setIsLoadingBudget(false);
-
-    if (res && 'error' in res) {
-      addToast({ message: 'Error saving budget', type: 'error' });
-    } else {
-      addToast({ message: `Budget for ${displayMonth} updated!`, type: 'success' });
-      window.dispatchEvent(new CustomEvent('budget:changed'));
-      onClose?.();
+    try {
+      const res = await setMonthlyBudget(form);
+      if (res && 'error' in res) {
+        addToast({ message: 'Error saving budget', type: 'error' });
+      } else {
+        addToast({ message: `Budget for ${displayMonth} updated!`, type: 'success' });
+        window.dispatchEvent(new CustomEvent('budget:changed'));
+        if (onClose) onClose(); // Fixed: Proper function call instead of expression
+      }
+    } catch {
+      addToast({ message: 'Database communication error', type: 'error' });
+    } finally {
+      setIsLoadingBudget(false);
     }
   };
 

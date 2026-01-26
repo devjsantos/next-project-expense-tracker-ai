@@ -6,7 +6,8 @@ import deleteRecord from '@/app/actions/deleteRecord';
 import updateRecord from '@/app/actions/updateRecord';
 import { useToast } from '@/components/ToastProvider';
 
-// Define the shape of alerts from your updateRecord action
+/* ================= TYPES ================= */
+
 interface BudgetAlert {
   type: 'warning' | 'info' | 'success';
   message: string;
@@ -17,6 +18,8 @@ interface RecordItemProps {
   isManageMode: boolean;
   onRefresh: () => void;
 }
+
+/* ================= COMPONENT ================= */
 
 const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
   const { addToast } = useToast();
@@ -39,7 +42,6 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
       const result = await deleteRecord(record.id);
 
       if (result?.error) {
-        // ✅ Removed 'any' cast. result.error is already a string based on your action types.
         addToast(String(result.error), 'error');
       } else {
         addToast('Record deleted successfully', 'success');
@@ -47,7 +49,6 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
         window.dispatchEvent(new CustomEvent('budget:changed'));
       }
     } catch {
-      // ✅ Removed unused 'err'
       addToast('Failed to delete record', 'error');
     } finally {
       setIsDeleting(false);
@@ -59,10 +60,11 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
     setIsUpdating(true);
 
     try {
+      const parsedAmount = parseFloat(editData.amount);
       const payload = {
         id: record.id,
         text: editData.text.trim(),
-        amount: parseFloat(editData.amount),
+        amount: parsedAmount,
         category: editData.category,
         date: new Date(editData.date).toISOString(),
       };
@@ -76,7 +78,6 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
       const result = await updateRecord(payload);
 
       if (result?.error) {
-        // ✅ Safely extract error string
         addToast(`Update Failed: ${result.error}`, 'error');
       } else {
         addToast('Updated successfully!', 'success');
@@ -86,15 +87,14 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
         window.dispatchEvent(new CustomEvent('records:changed'));
         window.dispatchEvent(new CustomEvent('budget:changed'));
 
-        // ✅ Typed the alert loop to avoid 'any'
-        if (result.alerts && result.alerts.length > 0) {
-          result.alerts.forEach((alertItem: BudgetAlert) => {
+        // Correctly typed alert handling
+        if (result.alerts && Array.isArray(result.alerts)) {
+          (result.alerts as BudgetAlert[]).forEach((alertItem) => {
             addToast(alertItem.message, alertItem.type);
           });
         }
       }
     } catch {
-       // ✅ Removed unused 'err'
       addToast("Connection error. Try again.", 'error');
     } finally {
       setIsUpdating(false);
@@ -124,12 +124,14 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
           ) : (
             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
               <button
+                type="button"
                 onClick={() => setIsEditModalOpen(true)}
                 className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
               >
                 ✏️
               </button>
               <button
+                type="button"
                 disabled={isDeleting}
                 onClick={handleDelete}
                 className="p-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all"

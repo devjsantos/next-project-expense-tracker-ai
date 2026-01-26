@@ -9,9 +9,11 @@ export default function AuthRefreshOnSignIn() {
 
   useEffect(() => {
     if (reloaded.current) return;
+    
+    let timeoutId: NodeJS.Timeout;
+
     if (isLoaded && isSignedIn) {
       // Poll the server to confirm the session cookie is visible to server-side code.
-      // Retry a few times with a short delay; only reload when the server reports signedIn=true.
       let attempts = 0;
       const maxAttempts = 4;
 
@@ -20,6 +22,7 @@ export default function AuthRefreshOnSignIn() {
         try {
           const res = await fetch('/api/auth/check');
           const data = await res.json();
+          
           if (data?.signedIn) {
             reloaded.current = true;
             // Replace location to avoid adding history entries
@@ -27,16 +30,22 @@ export default function AuthRefreshOnSignIn() {
             return;
           }
         } catch {
+          // Error variable 'e' removed to satisfy @typescript-eslint/no-unused-vars
           // ignore and retry
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(checkServerAuth, 700);
+          timeoutId = setTimeout(checkServerAuth, 700);
         }
       };
 
       checkServerAuth();
     }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isLoaded, isSignedIn]);
 
   return null;
