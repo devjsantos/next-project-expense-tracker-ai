@@ -1,4 +1,4 @@
-import getRecords from '@/app/actions/getRecords';
+import { getRecords } from '@/app/actions/getRecords';
 import RecordItem from './RecordItem';
 import { Record } from '@/types/Record';
 

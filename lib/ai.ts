@@ -66,24 +66,24 @@ function normalizeInsightType(value: unknown): InsightType {
   return 'info';
 }
 
-async function safeOpenAIRequest<T>(
-  fn: () => Promise<T>,
-  retries = 3
-): Promise<T> {
+// Helper function to wait
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
-      return await fn();
-    } catch (error: unknown) {
-      if (isRateLimitError(error) && error.code === 429 && i < retries - 1) {
-        const delay = (i + 1) * 2000;
-        console.warn(`⚠️ Rate limited. Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw error;
+      return await requestFn();
+    } catch (error: any) {
+      // If we hit a 429 error and have retries left...
+      if (error.status === 429 && i < retries - 1) {
+        const waitTime = Math.pow(2, i) * 1000; // Wait 1s, then 2s, then 4s
+        console.warn(`⚠️ Rate limited. Retrying in ${waitTime}ms...`);
+        await delay(waitTime);
+        continue;
       }
+      throw error; // If not a 429 or no retries left, crash normally
     }
   }
-  throw new Error('Max retries reached');
 }
 
 /* ================= LOCAL FALLBACK ================= */
@@ -251,47 +251,52 @@ Respond in 2–3 sentences.`;
   }
 }
 /* ================= RECEIPT SCANNING ================= */
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export async function analyzeReceiptImage(base64Image: string, mimeType: string) {
-  try {
-    const prompt = `Analyze this image (it could be a store receipt or a utility bill).
-    Extract the following into a JSON object:
-    {
-      "amount": number (Look for 'Total Amount Due' or 'Grand Total'),
-      "description": string (e.g., 'Electric Bill', 'Water Bill', or the Merchant name),
-      "category": "Bills" (If it's a utility bill) or "Food|Transportation|Shopping|Other"
+  const models = [
+    'google/gemini-2.0-flash-exp:free',
+    'qwen/qwen-2.5-vl-7b-instruct:free',
+    'google/gemini-2.0-pro-exp-02-05:free'
+  ];
+
+  let lastError: any = null;
+
+  for (const modelId of models) {
+    // Attempt the model twice with a delay if rate limited
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: modelId,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: "Extract to JSON: {amount: number, description: string, category: string}" },
+                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 500,
+        });
+
+        if (completion?.choices?.[0]?.message?.content) {
+          const content = completion.choices[0].message.content;
+          const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
+          return JSON.parse(cleaned);
+        }
+      } catch (error: any) {
+        lastError = error;
+        // If 429, sleep and try one more time for this specific model
+        if (error?.status === 429 && attempt === 1) {
+          await sleep(3000); // 3 seconds is safer for free tier
+          continue;
+        }
+        break; // Move to next model if it's not a temporary 429
+      }
     }
-    Return ONLY the JSON.`;
-
-    const completion = await safeOpenAIRequest(() =>
-      openai.chat.completions.create({
-        model: 'google/gemini-flash-1.5', // Best model for Vision + Speed
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
-                },
-              },
-            ],
-          },
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      })
-    );
-
-    const content = completion.choices[0].message.content;
-    if (!content) throw new Error('No response from AI');
-
-    const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
-    return JSON.parse(cleaned);
-  } catch (error) {
-    console.error('❌ Error analyzing receipt:', error);
-    throw error;
   }
+
+  throw new Error("AI services are currently congested. Please wait 10 seconds and try again.");
 }

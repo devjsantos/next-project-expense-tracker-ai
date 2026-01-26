@@ -3,7 +3,8 @@ import { db } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 import { Record } from '@/types/Record';
 
-async function getRecords(): Promise<{
+// Changed to named export
+export async function getRecords(): Promise<{
   records?: Record[];
   error?: string;
 }> {
@@ -14,19 +15,18 @@ async function getRecords(): Promise<{
   }
 
   try {
+    // Note: ensure your prisma schema is "records" and not "record"
     const records = await db.records.findMany({
       where: { userId },
       orderBy: {
-        date: 'desc', // Sort by the `date` field in descending order
+        date: 'desc',
       },
-      take: 10, // Limit the request to 10 records
+      take: 10,
     });
 
-    return { records };
+    return { records: records as Record[] };
   } catch (error) {
-    console.error('Error fetching records:', error); // Log the error
+    console.error('Error fetching records:', error);
     return { error: 'Database error' };
   }
 }
-
-export default getRecords;
