@@ -34,11 +34,14 @@ interface RecentRow {
 
 export default async function sendInsightsEmail() {
   const user = await checkUser();
+  if (!user) return { error: 'Debug: No user found in DB' };
+  if (!user.email) return { error: 'Debug: User has no email address' };
+  if (!user.clerkUserId) return { error: 'Debug: Clerk ID missing' };
   if (!user || !user.email || !user.clerkUserId) return { error: 'User not authenticated' };
-
+  console.log("SERVER ACTION SUCCESS: Found user", user.clerkUserId);
   // 1. Setup Formatting & Dates
   const currentMonthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
-  
+
   const formatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
@@ -113,21 +116,21 @@ export default async function sendInsightsEmail() {
         <h2 style="font-size:15px; color:#0f172a; margin:0 0 12px 0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">AI Insights</h2>
         <div style="margin-bottom:24px;">
           ${insights.map((i) => {
-            const color = i.type === 'warning' ? '#fff7ed' : '#f0f9ff';
-            const border = i.type === 'warning' ? '#fb923c' : '#3b82f6';
-            const textColor = i.type === 'warning' ? '#9a3412' : '#1e40af';
-            
-            // Safety check: Replace any stray $ with ₱ in AI text
-            const cleanMessage = i.message.replace(/\$/g, '₱');
-            const cleanTitle = i.title.replace(/\$/g, '₱');
+    const color = i.type === 'warning' ? '#fff7ed' : '#f0f9ff';
+    const border = i.type === 'warning' ? '#fb923c' : '#3b82f6';
+    const textColor = i.type === 'warning' ? '#9a3412' : '#1e40af';
 
-            return `
+    // Safety check: Replace any stray $ with ₱ in AI text
+    const cleanMessage = i.message.replace(/\$/g, '₱');
+    const cleanTitle = i.title.replace(/\$/g, '₱');
+
+    return `
               <div style="background:${color}; padding:14px; border-left:4px solid ${border}; border-radius:8px; margin-bottom:12px;">
                 <div style="font-weight:800; color:${textColor}; font-size:13px; text-transform: uppercase;">${cleanTitle}</div>
                 <div style="color:#334155; font-size:13px; margin-top:6px; line-height: 1.6;">${cleanMessage}</div>
               </div>
             `;
-          }).join('')}
+  }).join('')}
         </div>
 
         <table width="100%" style="border-collapse:collapse; margin-bottom:24px;">

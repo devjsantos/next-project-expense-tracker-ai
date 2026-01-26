@@ -1,7 +1,3 @@
-// Use global fetch (Node 18+ / Next.js runtime). If not available, runtime should polyfill.
-// Use global fetch; cast to the correct type for TypeScript.
-const globalFetch = (globalThis as unknown as { fetch?: typeof fetch }).fetch;
-
 import nodemailer from 'nodemailer';
 
 type EmailPayload = {
@@ -10,6 +6,8 @@ type EmailPayload = {
   html: string;
   text?: string;
 };
+
+const globalFetch = (globalThis as unknown as { fetch?: typeof fetch }).fetch;
 
 async function sendWithResend(payload: EmailPayload) {
   const key = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
@@ -39,36 +37,44 @@ async function sendWithResend(payload: EmailPayload) {
 }
 
 export async function sendEmail(payload: EmailPayload) {
-  // Prefer Resend if configured
-  const key = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
-  if (key) {
+  const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  
+  // 1. Try Resend First
+  if (resendKey) {
     return await sendWithResend(payload);
   }
 
-  // If SMTP is configured, use it (self-hosted SMTP)
+  // 2. Fallback to SMTP
   const smtpHost = process.env.SMTP_HOST;
   if (smtpHost) {
-    // create transport and send
     const transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: process.env.SMTP_USER
-        ? { user: process.env.SMTP_USER, pass: (process.env.SMTP_PASS || '').replace(/\s+/g, '') }
-        : undefined,
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: process.env.SMTP_SECURE === 'true', // Gmail 465 = true
+      pool: true, // Reuse connections
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: (process.env.SMTP_PASS || '').replace(/\s+/g, ''), // Strips spaces
+      },
+      // Increase timeout for slow serverless cold starts
+      connectionTimeout: 10000, 
+      greetingTimeout: 10000,
     });
 
-    const from = process.env.SMTP_FROM || process.env.RESEND_FROM || 'no-reply@example.com';
-
-    const info = await transporter.sendMail({
-      from,
-      to: payload.to,
-      subject: payload.subject,
-      text: payload.text || payload.html.replace(/<[^>]*>/g, ''),
-      html: payload.html,
-    });
-
-    return info;
+    try {
+      const from = process.env.SMTP_FROM || 'jojo.santos.dev@gmail.com';
+      const info = await transporter.sendMail({
+        from,
+        to: payload.to,
+        subject: payload.subject,
+        text: payload.text || payload.html.replace(/<[^>]*>/g, ''),
+        html: payload.html,
+      });
+      return info;
+    } catch (smtpError: any) {
+      console.error('Detailed SMTP Error:', smtpError.message);
+      throw new Error(`SMTP Transport Failed: ${smtpError.message}`);
+    }
   }
 
   throw new Error('No email provider configured (set RESEND_API_KEY or SMTP_HOST)');
