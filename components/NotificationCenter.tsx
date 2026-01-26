@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 type Notification = {
   id: string;
@@ -15,12 +16,13 @@ export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Notification | null>(null);
+  const [mounted, setMounted] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
-  /* ----------------------------------
-   * Fetch notifications
-   * ---------------------------------- */
+  useEffect(() => { setMounted(true); }, []);
+
   async function fetchNotifications() {
+    if (loading) return; // Prevent double clicks
     setLoading(true);
     try {
       const res = await fetch('/api/notifications');
@@ -29,20 +31,18 @@ export default function NotificationCenter() {
     } catch (err) {
       console.error('Failed to fetch notifications', err);
     } finally {
-      setLoading(false);
+      // Small artificial delay so the user can actually see the "Syncing" state
+      setTimeout(() => setLoading(false), 800);
     }
   }
 
   useEffect(() => {
     fetchNotifications();
     const handler = () => fetchNotifications();
-    window.addEventListener('notifications:changed', handler as EventListener);
-    return () => window.removeEventListener('notifications:changed', handler as EventListener);
+    window.addEventListener('notifications:changed', handler);
+    return () => window.removeEventListener('notifications:changed', handler);
   }, []);
 
-  /* ----------------------------------
-   * Mark read helpers
-   * ---------------------------------- */
   async function markRead(id: string) {
     try {
       await fetch('/api/notifications', {
@@ -50,173 +50,142 @@ export default function NotificationCenter() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [id] }),
       });
-
-      setNotifications((n) =>
-        n.map((item) => (item.id === id ? { ...item, read: true } : item)),
-      );
-
-      setSelected((s) => (s && s.id === id ? { ...s, read: true } : s));
-
-      window.dispatchEvent(new CustomEvent('notifications:changed'));
-    } catch (err) {
-      console.error('Failed to mark read', err);
-    }
+      setNotifications((n) => n.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    } catch (err) { console.error(err); }
   }
 
-  async function markAllRead() {
-    try {
-      await fetch('/api/notifications', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAll: true }),
-      });
+  const openNotification = (n: Notification) => {
+    setSelected(n);
+    if (!n.read) markRead(n.id);
+  };
 
-      setNotifications((n) => n.map((item) => ({ ...item, read: true })));
-      setSelected((s) => (s ? { ...s, read: true } : s));
+  const ModalOverlay = () => {
+    if (!selected || !mounted) return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80">
+        <div className="absolute inset-0" onClick={() => setSelected(null)} />
+        <div
+          ref={modalRef}
+          className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-200 border-2 border-gray-100 dark:border-gray-800"
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+              {selected.type === 'alert' ? '⚠️' : '🔔'}
+            </div>
+            <div>
+              <h4 className="text-xl font-black text-gray-900 dark:text-white leading-tight">
+                {selected.title}
+              </h4>
+              <p className="text-xs text-gray-400 font-bold uppercase mt-1">
+                {new Date(selected.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
 
-      window.dispatchEvent(new CustomEvent('notifications:changed'));
-    } catch (err) {
-      console.error('Failed to mark all read', err);
-    }
-  }
+          <div className="text-gray-700 dark:text-gray-200 leading-relaxed text-base whitespace-pre-wrap py-6 border-y border-gray-100 dark:border-gray-800">
+            {selected.message}
+          </div>
 
-  /* ----------------------------------
-   * Auto-mark as read when opened
-   * ---------------------------------- */
-  useEffect(() => {
-    if (selected && !selected.read) {
-      markRead(selected.id);
-    }
-  }, [selected]);
-
-  /* ----------------------------------
-   * Focus trap + ESC close
-   * ---------------------------------- */
-  useEffect(() => {
-    if (!selected) return;
-
-    const el = modalRef.current;
-    if (!el) return;
-
-    const prevFocus = document.activeElement as HTMLElement | null;
-    el.focus();
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setSelected(null);
-      }
-    }
-
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      prevFocus?.focus();
-    };
-  }, [selected]);
+          <div className="mt-8">
+            <button
+              onClick={() => setSelected(null)}
+              className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl font-bold transition-all active:scale-95 shadow-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <>
-      {/* Notification List */}
-      <div className="w-96 max-w-full bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 rounded-lg shadow-lg p-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold">Notifications</h3>
-          <button
-            onClick={markAllRead}
-            className="text-xs text-indigo-600 hover:underline"
+      <style jsx>{`
+        .custom-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .dark .custom-scroll::-webkit-scrollbar-track {
+          background: #1f2937;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: #c7d2fe; 
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+          background: #818cf8;
+        }
+      `}</style>
+
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden relative">
+        
+        {/* Syncing Status Indicator Overlay */}
+        {loading && (
+          <div className="absolute top-[60px] left-0 right-0 z-10 flex justify-center">
+            <div className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+              Syncing Logs...
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="font-black text-gray-900 dark:text-white tracking-tight">System Logs</h3>
+          
+          <button 
+            onClick={fetchNotifications} 
+            disabled={loading}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors group relative"
           >
-            Mark all read
+            <svg 
+              className={`w-5 h-5 text-indigo-600 transition-all duration-700 ${loading ? 'animate-spin opacity-40' : 'group-active:rotate-180'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
           </button>
         </div>
 
-        <div className="max-h-72 overflow-y-auto">
-          {loading && <div className="text-sm text-gray-500">Loading…</div>}
-          {!loading && notifications.length === 0 && (
-            <div className="text-sm text-gray-500">No notifications</div>
+        <div className={`max-h-[400px] overflow-y-auto custom-scroll p-3 space-y-2 bg-white dark:bg-gray-900 transition-opacity duration-300 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+          {notifications.length === 0 && !loading && (
+            <div className="p-10 text-center text-gray-400 font-medium italic">No recent activity.</div>
           )}
 
           {notifications.map((n) => (
             <div
               key={n.id}
-              onClick={() => setSelected(n)}
-              role="button"
-              tabIndex={0}
-              className={`p-3 rounded-md mb-2 cursor-pointer border-l-4 transition
-                ${
-                  n.read
-                    ? 'bg-gray-50 dark:bg-gray-900/60 border-l-gray-200/30'
-                    : 'bg-indigo-50/40 dark:bg-indigo-900/20 border-l-indigo-500 shadow-sm'
+              onClick={() => openNotification(n)}
+              className={`p-4 rounded-xl cursor-pointer transition-all border-2
+                ${n.read 
+                  ? 'bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 opacity-50' 
+                  : 'bg-white dark:bg-gray-800 border-indigo-500 shadow-md ring-1 ring-indigo-500/10 hover:border-indigo-600'
                 }`}
             >
-              <div className="flex justify-between">
-                <div>
-                  <div className={`text-sm ${n.read ? 'font-medium' : 'font-semibold'}`}>
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm truncate ${n.read ? 'font-bold' : 'font-black text-gray-900 dark:text-white'}`}>
                     {n.title}
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
-                    {n.message}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {new Date(n.createdAt).toLocaleString()}
-                  </div>
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-1 font-medium">{n.message}</p>
                 </div>
                 {!n.read && (
-                  <span className="text-xs bg-rose-500 text-white px-2 py-0.5 rounded-full h-fit">
-                    New
-                  </span>
+                  <div className="w-3 h-3 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] flex-shrink-0 mt-1" />
                 )}
               </div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Centered Modal */}
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setSelected(null)}
-          />
-
-          <div
-            ref={modalRef}
-            tabIndex={-1}
-            className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 outline-none animate-in fade-in zoom-in-95"
-          >
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <h4 className="text-lg font-semibold">{selected.title}</h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  {new Date(selected.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-4 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-              {selected.message}
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setSelected(null)}
-                className="px-4 py-2 border rounded-md text-sm"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalOverlay />
     </>
   );
 }

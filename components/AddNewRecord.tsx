@@ -1,13 +1,28 @@
 'use client';
+
 import { useRef, useState, ChangeEvent, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import addExpenseRecord from '@/app/actions/addExpenseRecord';
 import { scanReceipt } from '@/app/actions/scanReceipt';
-import getBudgets from '@/app/actions/getBudgets';
-import { getRecords } from '@/app/actions/getRecords';
-import { calculateBudgetAlerts, Budget, Expense } from '@/lib/budget';
+import { suggestCategory } from '@/app/actions/suggestCategory';
+import { useToast } from '@/components/ToastProvider';
 
-/* --- Helper: Resize Image for faster AI processing --- */
+// --- Improved Types ---
+interface BudgetAlert {
+  type: 'warning' | 'info' | 'success';
+  message: string;
+}
+
+interface ScanResponse {
+  success: boolean;
+  data: {
+    description?: string;
+    amount?: string | number;
+    category?: string;
+  } | null;
+  error: string | null;
+}
+
 const resizeImage = (file: File): Promise<{ base64: string; mimeType: string }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -36,49 +51,25 @@ const resizeImage = (file: File): Promise<{ base64: string; mimeType: string }> 
   });
 };
 
-const getTodayDate = () => {
-  const local = new Date();
-  return `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
-};
+const getTodayDate = () => new Date().toISOString().split('T')[0];
 
 const AddRecord = () => {
-  const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addToast } = useToast();
 
-  // Separate audio refs for success and failure
-  const successAudioRef = useRef<HTMLAudioElement | null>(null);
-  const errorAudioRef = useRef<HTMLAudioElement | null>(null);
-
+  const [view, setView] = useState<'select' | 'form'>('select');
   const [amount, setAmount] = useState<string>('');
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [alertType, setAlertType] = useState<'success' | 'error' | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(getTodayDate());
-  const [isScanning, setIsScanning] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [history, setHistory] = useState<Expense[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isCategorizingAI, setIsCategorizingAI] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Initialize sounds
-    successAudioRef.current = new Audio('/sounds/success.mp3');
-    errorAudioRef.current = new Audio('/sounds/error.mp3');
-
-    const loadBudgetData = async () => {
-      try {
-        const bRes = await getBudgets();
-        const hRes = await getRecords();
-        if (bRes && 'budgets' in bRes) setBudgets(bRes.budgets as Budget[]);
-        if (hRes && 'records' in hRes) setHistory(hRes.records as unknown as Expense[]);
-      } catch (err) {
-        console.error("Data load error", err);
-      }
-    };
-    loadBudgetData();
   }, []);
 
   const handleReceiptCapture = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -86,108 +77,96 @@ const AddRecord = () => {
     if (!file) return;
 
     setIsScanning(true);
-    setAlertMessage(null);
 
     try {
-      // 1. Resize on client (avoids timeouts on large photos)
       const { base64, mimeType } = await resizeImage(file);
-
-      // 2. Scan with optimized base64
-      const result = await scanReceipt(base64, mimeType);
+      const result = (await scanReceipt(base64, mimeType)) as unknown as ScanResponse;
 
       if (result.success && result.data) {
-        successAudioRef.current?.play().catch(() => { });
-
+        setView('form');
         setDescription(result.data.description || '');
         setAmount(String(result.data.amount || ''));
         setCategory(result.data.category || '');
-
-        const currentMonth = new Date().toISOString().substring(0, 7);
-        const activeBudget = budgets.find(b => b.monthStart.startsWith(currentMonth)) || null;
-
-        const newExpense: Expense = {
-          amount: result.data.amount,
-          category: result.data.category,
-          date: new Date().toISOString()
-        };
-
-        const budgetAlerts = calculateBudgetAlerts(history, activeBudget, newExpense);
-
-        if (budgetAlerts.length > 0) {
-          errorAudioRef.current?.play().catch(() => { });
-          setAlertMessage(`⚠️ ${budgetAlerts.map(a => a.message).join(' | ')}`);
-          setAlertType('error');
-        } else {
-          setAlertMessage('Receipt scanned successfully!');
-          setAlertType('success');
-        }
+        addToast('AI successfully read your receipt!', 'success');
       } else {
-        errorAudioRef.current?.play().catch(() => { });
-        setAlertMessage(result.error || 'Could not read receipt');
-        setAlertType('error');
+        throw new Error(result.error || 'Scan failed');
       }
-    } catch (err) {
-      errorAudioRef.current?.play().catch(() => { });
-      setAlertMessage('Scanning failed. AI service might be busy.');
-      setAlertType('error');
+    } catch (err: any) {
+      addToast(err.message || 'AI Busy. Please fill details manually.', 'warning');
+      setView('form');
     } finally {
       setIsScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const clientAction = async (formData: FormData) => {
-    setIsLoading(true);
-    setAlertMessage(null);
-    const numAmt = parseFloat(amount);
-
-    if (isNaN(numAmt) || numAmt < 0) {
-      setAlertMessage('Invalid amount');
-      setAlertType('error');
-      setIsLoading(false);
-      return;
+  const handleAISuggestCategory = async () => {
+    if (!description.trim()) return;
+    setIsCategorizingAI(true);
+    try {
+      const result = await suggestCategory(description);
+      if (result.category) {
+        const valid = ['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills', 'Healthcare', 'Other'];
+        const matched = valid.find(v => result.category?.toLowerCase().includes(v.toLowerCase()));
+        setCategory(matched || 'Other');
+        addToast(`Categorized as ${matched || 'Other'}`, 'info');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCategorizingAI(false);
     }
-
-    formData.set('amount', String(numAmt));
-    formData.set('category', category);
-    formData.set('date', date);
-    formData.set('description', description);
-
-    const result = await addExpenseRecord(formData);
-    if (result.error) {
-      errorAudioRef.current?.play().catch(() => { });
-      setAlertMessage(`Error: ${result.error}`);
-      setAlertType('error');
-    } else {
-      successAudioRef.current?.play().catch(() => { });
-      setAlertMessage('Expense saved successfully!');
-      setAlertType('success');
-      formRef.current?.reset();
-      setAmount(''); setCategory(''); setDescription(''); setDate(getTodayDate());
-      window.dispatchEvent(new CustomEvent('records:changed'));
-    }
-    setIsLoading(false);
   };
 
-  // Inside AddRecord Component...
+  const clientAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.set('amount', amount);
+    formData.set('category', category);
+    formData.set('date', date);
+    formData.set('text', description);
+
+    try {
+      const result = await addExpenseRecord(formData);
+
+      if (result.error) {
+        addToast(`Error: ${result.error}`, 'error');
+      } else {
+        // 1. Show Main Success Toast
+        addToast('Expense added successfully!', 'success');
+
+        // 2. Handle AI/Budget Alerts via Toasts
+        const maybeAlerts = (result.alerts || []) as BudgetAlert[];
+        maybeAlerts.forEach(a => {
+          // Explicitly mapping 'info' | 'warning' | 'success' to our toast types
+          addToast(a.message, a.type as 'info' | 'warning' | 'success');
+        });
+
+        // 3. Reset UI
+        setAmount(''); setCategory(''); setDescription(''); setDate(getTodayDate());
+        setTimeout(() => setView('select'), 500);
+
+        // 4. Refresh Data
+        window.dispatchEvent(new CustomEvent('records:changed'));
+        window.dispatchEvent(new CustomEvent('budget:changed'));
+        if (maybeAlerts.length > 0) window.dispatchEvent(new CustomEvent('notifications:changed'));
+      }
+    } catch (err) {
+      addToast('Server error. Try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const LoadingOverlay = () => {
     if (!isScanning || !mounted) return null;
     return createPortal(
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-900/70 backdrop-blur-md">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-xs w-full">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xl">📄</span>
-            </div>
-          </div>
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">SmartJuan AI Reading</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Extracting totals and checking your budget status...
-            </p>
-          </div>
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border border-gray-100 dark:border-gray-700">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">AI Vision Scanning...</p>
         </div>
       </div>,
       document.body
@@ -195,86 +174,107 @@ const AddRecord = () => {
   };
 
   return (
-    <div className='relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50'>
+    <div className='relative bg-white dark:bg-gray-900 p-5 sm:p-6 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden'>
       <LoadingOverlay />
-      <div className='flex justify-between items-start mb-6'>
-        <div className='flex items-center gap-3'>
-          <div className='w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white'>💳</div>
-          <h3 className='text-xl font-bold'>Add Expense</h3>
-        </div>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isScanning || isLoading}
-          className="flex flex-col items-center gap-1 group disabled:opacity-50"
-        >
-          <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">📸</div>
-          <span className="text-[10px] font-bold text-gray-400">SCAN</span>
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleReceiptCapture}
-        />
-      </div>
 
-      <form ref={formRef} onSubmit={(e) => { e.preventDefault(); void clientAction(new FormData(formRef.current!)); }} className='space-y-6'>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <input
-            type='text'
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder='Merchant'
-            className='w-full px-3 py-2.5 bg-white dark:bg-gray-800 border-2 rounded-xl text-sm'
-            required
-          />
-          <input
-            type='date'
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className='w-full px-3 py-2.5 bg-white dark:bg-gray-800 border-2 rounded-xl text-sm'
-          />
-        </div>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className='w-full px-3 py-2.5 bg-white dark:bg-gray-800 border-2 rounded-xl text-sm'
-            required
-          >
-            <option value='' disabled>Category</option>
-            <option value='Food'>Food</option>
-            <option value='Transportation'>Transpo</option>
-            <option value='Bills'>Bills</option>
-            <option value='Shopping'>Shopping</option>
-            <option value='Other'>Other</option>
-          </select>
-          <div className='relative'>
-            <span className='absolute left-3 top-1/2 -translate-y-1/2'>₱</span>
-            <input
-              type='number'
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className='w-full pl-7 pr-3 py-2.5 bg-white dark:bg-gray-800 border-2 rounded-xl text-sm font-bold'
-              required
-            />
+      {view === 'select' ? (
+        <div className="space-y-4 py-4 animate-in fade-in zoom-in-95 duration-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => setView('form')}
+              className="flex flex-col items-center justify-center gap-3 p-8 bg-gray-50/50 dark:bg-gray-800/30 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[2rem] hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all group"
+            >
+              <span className="text-4xl">✏️</span>
+              <div className="text-center">
+                <span className="block font-black text-[10px] uppercase tracking-widest text-gray-400 group-hover:text-indigo-600">Manual Entry</span>
+                <span className="font-bold text-sm text-gray-900 dark:text-white">Type Details</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-3 p-8 bg-indigo-600 rounded-[2rem] hover:bg-indigo-700 shadow-xl shadow-indigo-500/40 transition-all group active:scale-95"
+            >
+              <span className="text-4xl">📸</span>
+              <div className="text-center">
+                <span className="block font-black text-[10px] uppercase tracking-widest text-indigo-200">AI Scanner</span>
+                <span className="font-bold text-sm text-white">Scan Receipt</span>
+              </div>
+            </button>
           </div>
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleReceiptCapture} />
         </div>
-        <button
-          type='submit'
-          disabled={isLoading || isScanning}
-          className='w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all'
-        >
-          {isLoading ? 'Saving...' : 'Add Expense'}
-        </button>
-      </form>
+      ) : (
+        <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={() => setView('select')} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-500 hover:text-indigo-600 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <h3 className='text-xs font-black text-gray-400 uppercase tracking-[0.2em]'>Expense Details</h3>
+            <div className="w-9" />
+          </div>
 
-      {alertMessage && (
-        <div className={`mt-4 p-3 rounded-xl text-sm font-medium border-l-4 ${alertType === 'success' ? 'bg-green-50 border-green-500 text-green-700' : 'bg-red-50 border-red-500 text-red-700'
-          }`}>
-          {alertMessage}
+          <form onSubmit={clientAction} className='space-y-4'>
+            <div className="relative group">
+              <input
+                type='text'
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder='Merchant name...'
+                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl font-bold focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400 text-gray-900 dark:text-white'
+                required
+              />
+              <button
+                type="button"
+                onClick={handleAISuggestCategory}
+                disabled={!description.trim() || isCategorizingAI}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black shadow-lg disabled:opacity-0 transition-all active:scale-90"
+              >
+                {isCategorizingAI ? '...' : '✨ AI CAT'}
+              </button>
+            </div>
+
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 appearance-none text-gray-900 dark:text-white'
+                required
+              >
+                <option value='' disabled>Category</option>
+                <option value='Food'>Food & Dining</option>
+                <option value='Transportation'>Transportation</option>
+                <option value='Shopping'>Shopping</option>
+                <option value='Entertainment'>Entertainment</option>
+                <option value='Bills'>Bills & Utilities</option>
+                <option value='Healthcare'>Healthcare</option>
+                <option value='Other'>Other</option>
+              </select>
+              <input 
+                type='date' 
+                value={date} 
+                onChange={(e) => setDate(e.target.value)} 
+                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 text-gray-900 dark:text-white' 
+              />
+            </div>
+
+            <div className='relative'>
+              <span className='absolute left-4 top-1/2 -translate-y-1/2 font-black text-indigo-600 text-2xl'>₱</span>
+              <input
+                type='number'
+                step="any"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className='w-full pl-12 pr-4 py-5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-3xl font-black focus:border-indigo-600 outline-none transition-all text-gray-900 dark:text-white'
+                required
+              />
+            </div>
+
+            <button type='submit' disabled={isLoading} className='w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-all disabled:opacity-50'>
+              {isLoading ? 'Processing...' : 'Save Expense'}
+            </button>
+          </form>
         </div>
       )}
     </div>

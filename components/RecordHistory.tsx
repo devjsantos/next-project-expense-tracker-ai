@@ -1,93 +1,88 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { getRecords } from '@/app/actions/getRecords';
 import RecordItem from './RecordItem';
 import { Record } from '@/types/Record';
 
-const RecordHistory = async () => {
-  const { records, error } = await getRecords();
+const RecordHistory = () => {
+  const [records, setRecords] = useState<Record[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isManageMode, setIsManageMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  if (error) {
-    return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50'>
-        <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-          <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-sm sm:text-lg'>📝</span>
-          </div>
-          <div>
-            <h3 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent'>
-              Expense History
-            </h3>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-              Your spending timeline
-            </p>
-          </div>
-        </div>
-        <div className='bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-l-4 border-l-red-500 p-3 sm:p-4 rounded-xl'>
-          <div className='flex items-center gap-2 mb-2'>
-            <div className='w-6 h-6 sm:w-8 sm:h-8 bg-red-100 dark:bg-red-800 rounded-lg flex items-center justify-center'>
-              <span className='text-base sm:text-lg'>⚠️</span>
-            </div>
-            <h4 className='font-bold text-red-800 dark:text-red-300 text-sm'>
-              Error loading expense history
-            </h4>
-          </div>
-          <p className='text-red-700 dark:text-red-400 ml-8 sm:ml-10 text-xs'>
-            {error}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const fetchRecords = async () => {
+    setLoading(true);
+    const { records: data, error: err } = await getRecords();
+    if (err) setError(err);
+    if (data) setRecords(data);
+    setLoading(false);
+  };
 
-  if (!records || records.length === 0) {
-    return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50'>
-        <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-          <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-sm sm:text-lg'>📝</span>
-          </div>
-          <div>
-            <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-              Expense History
-            </h3>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-              Your spending timeline
-            </p>
-          </div>
-        </div>
-        <div className='text-center py-6 sm:py-8'>
-          <div className='w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/50 dark:to-blue-900/50 rounded-2xl flex items-center justify-center mx-auto mb-4'>
-            <span className='text-2xl sm:text-3xl'>📊</span>
-          </div>
-          <h4 className='text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200 mb-2'>
-            No Expense Records Found
-          </h4>
-          <p className='text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm'>
-            Start tracking your expenses to see your spending history and
-            patterns here.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchRecords();
+    // Listen for changes from the AddRecord component
+    window.addEventListener('records:changed', fetchRecords);
+    return () => window.removeEventListener('records:changed', fetchRecords);
+  }, []);
+
+  if (loading) return <div className="p-10 text-center animate-pulse">Loading History...</div>;
 
   return (
-    <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-      <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-        <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-          <span className='text-white text-sm sm:text-lg'>📝</span>
+    <div className='bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-800 transition-all'>
+      {/* HEADER SECTION */}
+      <div className='flex items-center justify-between mb-6'>
+        <div className='flex items-center gap-3'>
+          <div className='w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20'>
+            <span className='text-white'>📜</span>
+          </div>
+          <div>
+            <h3 className='text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight'>
+              Timeline
+            </h3>
+            <p className='text-[10px] font-black text-gray-400 uppercase tracking-widest'>
+              Recent Transactions
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent'>
-            Expense History
-          </h3>
-          <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-            Your spending timeline
-          </p>
-        </div>
+
+        {/* MANAGE TOGGLE */}
+        <button 
+          onClick={() => setIsManageMode(!isManageMode)}
+          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            isManageMode 
+            ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-indigo-50 hover:text-indigo-600'
+          }`}
+        >
+          {isManageMode ? 'Done Editing' : 'Edit History'}
+        </button>
       </div>
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4'>
+
+      {/* ERROR STATE */}
+      {error && (
+        <div className='bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border-l-4 border-red-500 text-red-700 dark:text-red-400 text-xs font-bold'>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* EMPTY STATE */}
+      {!loading && records.length === 0 && (
+        <div className='text-center py-12 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-3xl'>
+          <span className='text-4xl block mb-4'>☁️</span>
+          <p className='text-gray-400 font-bold text-sm uppercase tracking-tighter'>No records yet</p>
+        </div>
+      )}
+
+      {/* LIST VIEW */}
+      <div className='space-y-2'>
         {records.map((record: Record) => (
-          <RecordItem key={record.id} record={record} />
+          <RecordItem 
+            key={record.id} 
+            record={record} 
+            isManageMode={isManageMode} 
+            onRefresh={fetchRecords}
+          />
         ))}
       </div>
     </div>

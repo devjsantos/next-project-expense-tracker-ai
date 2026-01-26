@@ -1,224 +1,219 @@
 'use client';
 
 import { useState } from 'react';
-import { Record } from '@/types/Record';
+import { Record as MyExpenseRecord } from '@/types/Record';
 import deleteRecord from '@/app/actions/deleteRecord';
 import updateRecord from '@/app/actions/updateRecord';
+import { useToast } from '@/components/ToastProvider';
 
-/* ================= TYPES ================= */
-
-type AlertType = 'info' | 'warning' | 'error' | 'success';
-
-interface Alert {
-  type: AlertType;
-  message: string;
+interface RecordItemProps {
+  record: MyExpenseRecord;
+  isManageMode: boolean;
+  onRefresh: () => void;
 }
 
-interface UpdateRecordResult {
-  alerts?: Alert[];
-}
+const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
+  const { addToast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-/* ============== HELPERS ================= */
+  const [editData, setEditData] = useState({
+    text: record.text,
+    amount: record.amount.toString(),
+    category: record.category,
+    date: new Date(record.date).toISOString().split('T')[0]
+  });
 
-const getCategoryEmoji = (category: string): string => {
-  switch (category) {
-    case 'Food':
-      return '🍔';
-    case 'Transportation':
-      return '🚗';
-    case 'Shopping':
-      return '🛒';
-    case 'Entertainment':
-      return '🎬';
-    case 'Bills':
-      return '💡';
-    case 'Healthcare':
-      return '🏥';
-    default:
-      return '📦';
-  }
-};
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this?')) return;
 
-const getBorderColor = (amount: number): string => {
-  if (amount > 100) return 'border-red-500';
-  if (amount > 50) return 'border-yellow-500';
-  return 'border-blue-500';
-};
+    setIsDeleting(true);
+    try {
+      const result = await deleteRecord(record.id);
 
-/* ============== COMPONENT ================= */
-
-const RecordItem = ({ record }: { record: Record }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [editText, setEditText] = useState(record.text ?? '');
-  const [editAmount, setEditAmount] = useState(record.amount.toString());
-  const [editCategory, setEditCategory] = useState(record.category ?? 'Other');
-  const [editDate, setEditDate] = useState(
-    new Date(record.date).toISOString().slice(0, 10)
-  );
-
-  /* ============== ACTIONS ================= */
-
-  const handleDeleteRecord = async (recordId: string) => {
-    setIsLoading(true);
-
-    await deleteRecord(recordId);
-
-    window.dispatchEvent(new CustomEvent('records:changed'));
-    window.dispatchEvent(new CustomEvent('budget:changed'));
-
-    setIsLoading(false);
+      if (result?.error) {
+        // FIX: Using a type guard or string coercion to satisfy TypeScript
+        const errorObj = result.error as any;
+        const errorMessage = errorObj?.message || String(result.error);
+        addToast(errorMessage, 'error');
+      } else {
+        addToast('Record deleted successfully', 'success');
+        onRefresh();
+        window.dispatchEvent(new CustomEvent('budget:changed'));
+      }
+    } catch (err) {
+      addToast('Failed to delete record', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const handleSaveEdit = async () => {
-    setIsLoading(true);
-
-    const amount = Number(editAmount);
-    if (!Number.isFinite(amount) || amount < 0) {
-      alert('Amount must be a non-negative number');
-      setIsLoading(false);
-      return;
-    }
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
 
     try {
-      const result = (await updateRecord({
+      const payload = {
         id: record.id,
-        text: editText,
-        amount,
-        category: editCategory,
-        date: new Date(editDate).toISOString(),
-      })) as UpdateRecordResult;
+        text: editData.text.trim(),
+        amount: parseFloat(editData.amount),
+        category: editData.category,
+        date: new Date(editData.date).toISOString(),
+      };
 
-      if (result.alerts?.length) {
-        alert(
-          result.alerts
-            .map(a => `${a.type.toUpperCase()}: ${a.message}`)
-            .join('\n')
-        );
-
-        window.dispatchEvent(new CustomEvent('notifications:changed'));
+      if (isNaN(payload.amount) || payload.amount <= 0) {
+        addToast("Please enter a valid amount greater than 0", 'warning');
+        setIsUpdating(false);
+        return;
       }
 
-      setIsEditing(false);
-      window.dispatchEvent(new CustomEvent('records:changed'));
-      window.dispatchEvent(new CustomEvent('budget:changed'));
-    } catch {
-      alert('Failed to update record');
+      const result = await updateRecord(payload);
+
+      if (result?.error) {
+        // FIX: Safe error extraction
+        const errorObj = result.error as any;
+        const msg = errorObj?.message || String(result.error);
+        addToast(`Update Failed: ${msg}`, 'error');
+      } else {
+        addToast('Updated successfully!', 'success');
+        setIsEditModalOpen(false);
+        onRefresh();
+
+        window.dispatchEvent(new CustomEvent('records:changed'));
+        window.dispatchEvent(new CustomEvent('budget:changed'));
+
+        if (result.alerts && result.alerts.length > 0) {
+          result.alerts.forEach((alertItem: any) => {
+            addToast(alertItem.message, alertItem.type as any);
+          });
+        }
+      }
+    } catch (err) {
+      addToast("Connection error. Try again.", 'error');
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
-  /* ============== UI ================= */
-
+  // ... rest of your return JSX remains the same ...
   return (
-    <li
-      className={`bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-lg border border-gray-100/50 dark:border-gray-600/50 border-l-4 ${getBorderColor(
-        record.amount
-      )} relative min-h-[120px] sm:min-h-[140px] flex flex-col justify-between`}
-    >
-      {/* Delete */}
-      <button
-        onClick={() => handleDeleteRecord(record.id)}
-        disabled={isLoading}
-        aria-label="Delete record"
-        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg hover:scale-110 transition"
-      >
-        {isLoading ? (
-          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          '✕'
-        )}
-      </button>
-
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>{new Date(record.date).toLocaleDateString()}</span>
-          <span className="font-bold text-gray-900 dark:text-gray-100">
-            ₱{record.amount.toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span>{getCategoryEmoji(record.category)}</span>
-          <span className="text-sm">{record.category}</span>
-        </div>
-
-        {!isEditing ? (
-          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-            {record.text}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            <input
-              className="w-full p-1 border rounded"
-              value={editText}
-              onChange={e => setEditText(e.target.value)}
-            />
-
-            <div className="flex gap-2">
-              <input
-                type="date"
-                className="p-1 border rounded"
-                value={editDate}
-                onChange={e => setEditDate(e.target.value)}
-              />
-
-              <select
-                className="p-1 border rounded"
-                value={editCategory}
-                onChange={e => setEditCategory(e.target.value)}
-              >
-                {[
-                  'Food',
-                  'Transportation',
-                  'Shopping',
-                  'Entertainment',
-                  'Bills',
-                  'Healthcare',
-                  'Other',
-                ].map(cat => (
-                  <option key={cat}>{cat}</option>
-                ))}
-              </select>
-
-              <input
-                className="p-1 border rounded w-24"
-                value={editAmount}
-                onChange={e => setEditAmount(e.target.value)}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveEdit}
-                disabled={isLoading}
-                className="px-3 py-1 bg-indigo-600 text-white rounded"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-3 py-1 bg-gray-200 rounded"
-              >
-                Cancel
-              </button>
-            </div>
+    <>
+      {/* Transaction Row */}
+      <div className="group flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-800/30 hover:bg-white dark:hover:bg-gray-800 rounded-2xl transition-all border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-700 flex items-center justify-center text-lg shadow-sm">
+            {getCategoryEmoji(record.category)}
           </div>
-        )}
+          <div>
+            <h4 className="font-bold text-gray-900 dark:text-white text-sm">{record.text}</h4>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              {new Date(record.date).toLocaleDateString()} • {record.category}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {!isManageMode ? (
+            <span className="font-black text-gray-900 dark:text-white">
+              ₱{Number(record.amount).toLocaleString()}
+            </span>
+          ) : (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+              >
+                ✏️
+              </button>
+              <button
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="p-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+              >
+                {isDeleting ? '...' : '🗑️'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {!isEditing && (
-        <button
-          onClick={() => setIsEditing(true)}
-          className="mt-3 text-xs border rounded px-2 py-1"
-        >
-          Edit
-        </button>
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md p-6 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-800 animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase mb-6 tracking-tighter">Edit Record</h3>
+
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Description</label>
+                <input
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none"
+                  value={editData.text}
+                  onChange={e => setEditData({ ...editData, text: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Category</label>
+                  <select
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl font-bold text-sm text-gray-900 dark:text-white"
+                    value={editData.category}
+                    onChange={e => setEditData({ ...editData, category: e.target.value })}
+                  >
+                    <option value="Food">Food</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Bills">Bills</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Amount</label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl font-bold text-gray-900 dark:text-white"
+                    value={editData.amount}
+                    onChange={e => setEditData({ ...editData, amount: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 py-4 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {isUpdating ? 'Saving...' : 'Update'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-    </li>
+    </>
   );
+};
+
+const getCategoryEmoji = (cat: string) => {
+  const emojis: { [key: string]: string } = {
+    'Food': '🍔', 'Transportation': '🚗', 'Shopping': '🛒', 'Bills': '💡',
+    'Entertainment': '🎬', 'Healthcare': '🏥', 'Other': '📦'
+  };
+  return emojis[cat] || '💰';
 };
 
 export default RecordItem;

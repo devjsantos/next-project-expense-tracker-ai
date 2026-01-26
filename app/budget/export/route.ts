@@ -1,0 +1,69 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/prisma';
+import { auth } from '@clerk/nextjs/server';
+
+export async function GET(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const month = searchParams.get('month') || new Date().toISOString().slice(0, 7); 
+
+    // 1. Fetch Records
+    const startOfMonth = new Date(`${month}-01T00:00:00Z`);
+    const endOfMonth = new Date(startOfMonth);
+    endOfMonth.setUTCMonth(endOfMonth.getUTCMonth() + 1);
+
+    const records = await db.records.findMany({
+      where: { userId, date: { gte: startOfMonth, lt: endOfMonth } },
+      orderBy: { date: 'desc' },
+    });
+
+    // 2. Calculate Totals for the Summary Section
+    const totalAmount = records.reduce((sum, r) => sum + r.amount, 0);
+    const dateExported = new Date().toLocaleDateString('en-PH');
+
+    // 3. Create Stylized Sections
+    // Section A: Branding & Summary
+    const summaryRows = [
+      ["SMART JUAN PESO - BUDGET REPORT"],
+      [`Month:`, month],
+      [`Exported On:`, dateExported],
+      [`Total Transactions:`, records.length],
+      [`TOTAL SPENT:`, `PHP ${totalAmount.toFixed(2)}`],
+      [], // Empty spacer row
+    ];
+
+    // Section B: Data Headers
+    const headers = ["DATE", "DESCRIPTION", "CATEGORY", "AMOUNT (PHP)"];
+    
+    // Section C: Transaction Rows
+    const dataRows = records.map((r) => [
+      new Date(r.date).toISOString().split('T')[0],
+      `"${r.text.replace(/"/g, '""')}"`,
+      r.category.toUpperCase(),
+      r.amount.toFixed(2)
+    ]);
+
+    // 4. Combine all sections with "sep=," for Excel compatibility
+    const csvContent = "sep=,\n" + [
+      ...summaryRows.map(row => row.join(",")),
+      headers.join(","),
+      ...dataRows.map(row => row.join(",")),
+      [], // Spacer
+      ["", "", "GRAND TOTAL", totalAmount.toFixed(2)] // Bottom total row
+    ].join("\n");
+
+    return new Response(csvContent, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="SmartJuanPeso-${month}.csv"`,
+      },
+    });
+
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
