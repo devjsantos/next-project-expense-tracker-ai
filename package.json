@@ -2,13 +2,13 @@
   "name": "next-expenses-tracker-ai",
   "version": "0.1.0",
   "private": true,
-"scripts": {
-  "dev": "next dev --webpack",
-  "build": "prisma generate && next build --webpack",
-  "start": "next start",
-  "lint": "eslint . --ext .ts,.tsx",
-  "test": "vitest"
-},
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "prisma generate && next build --webpack",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest"
+  },
   "dependencies": {
     "@clerk/nextjs": "^6.36.10",
     "@clerk/themes": "^2.4.16",
@@ -16,6 +16,7 @@
     "@prisma/client": "^7.3.0",
     "chart.js": "^4.5.0",
     "gsap": "^3.13.0",
+    "lucide-react": "^0.563.0",
     "next": "^16.0.1",
     "next-pwa": "5.6.0",
     "nodemailer": "^7.0.9",
@@ -24,8 +25,7 @@
     "prisma": "^7.3.0",
     "react": "^19.2.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.2.0"
-    ,
+    "react-dom": "^19.2.0",
     "tesseract.js": "^2.1.5"
   },
   "devDependencies": {

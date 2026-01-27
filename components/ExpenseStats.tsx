@@ -1,131 +1,153 @@
 import React from 'react';
 import getUserRecord from '@/app/actions/getUserRecord';
 import getBestWorstExpense from '@/app/actions/getBestWorstExpense';
+import getForecast from '@/app/actions/getForecast';
+import { 
+  BarChart3, 
+  TrendingUp, 
+  TrendingDown, 
+  AlertCircle, 
+  Zap, 
+  Activity,
+  CalendarDays
+} from 'lucide-react';
 
 const ExpenseStats = async () => {
   try {
-    // Fetch both average and range data
-    const [userRecordResult, rangeResult] = await Promise.all([
+    const [userRecordResult, rangeResult, forecast] = await Promise.all([
       getUserRecord(),
       getBestWorstExpense(),
+      getForecast(),
     ]);
 
     const { record, daysWithRecords } = userRecordResult;
     const { bestExpense, worstExpense } = rangeResult;
+    const { safeToSpend, remainingBudget, upcomingRecurringTotal, monthlyTotal, totalSpent } = forecast as any;
 
-    // Calculate average expense
     const validRecord = record || 0;
-    const validDays =
-      daysWithRecords && daysWithRecords > 0 ? daysWithRecords : 1;
+    const validDays = daysWithRecords && daysWithRecords > 0 ? daysWithRecords : 1;
     const averageExpense = validRecord / validDays;
 
     return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-        <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-          <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-sm sm:text-lg'>📊</span>
+      <div className='bg-white dark:bg-slate-900 p-5 sm:p-7 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800/50 overflow-hidden'>
+        {/* Header */}
+        <div className='flex items-center gap-4 mb-8'>
+          <div className='w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white'>
+            <BarChart3 size={24} />
           </div>
           <div>
-            <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-              Expense Statistics
+            <h3 className='text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter'>
+              Insights
             </h3>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-              Your spending insights and ranges
+            <p className='text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]'>
+              Real-time Analytics
             </p>
           </div>
         </div>
 
-        <div className='space-y-3 sm:space-y-4'>
-          {/* Average Daily Spending */}
-          <div className='bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 rounded-xl p-3 sm:p-4 border border-gray-200/50 dark:border-gray-600/50'>
-            <div className='text-center'>
-              <p className='text-xs font-medium text-gray-600 dark:text-gray-300 mb-2 tracking-wide uppercase'>
-                Average Daily Spending
-              </p>
-              <div className='text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2'>
-                ₱{averageExpense.toFixed(2)}
+        <div className='space-y-4'>
+          {/* Safe-to-Spend Card */}
+          <div className='bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-5 border border-slate-100 dark:border-slate-700/50'>
+            <div className='flex items-center gap-2 mb-3'>
+              <Zap size={14} className="text-amber-500 fill-amber-500" />
+              <p className='text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest'>Safe-to-Spend</p>
+            </div>
+            
+            <div className='flex items-baseline justify-between gap-3'>
+              <div className='text-3xl font-black text-slate-900 dark:text-white'>
+                ₱{(safeToSpend ?? (monthlyTotal - totalSpent)).toFixed(2)}
               </div>
-              <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full text-xs font-medium'>
-                <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full'></span>
-                Based on {validDays} days with expenses
+              <div className='text-[10px] font-black text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg'>
+                Left: ₱{(remainingBudget ?? 0).toFixed(2)}
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className='mt-5'>
+              <div className='w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden relative'>
+                {/* Total Spent Bar */}
+                <div 
+                  className='h-full bg-indigo-500 rounded-full transition-all duration-1000' 
+                  style={{ width: `${Math.min(((totalSpent || 0) / (monthlyTotal || 1)) * 100, 100)}%` }} 
+                />
+                {/* Committed/Recurring Overlay */}
+                <div 
+                  className='h-full bg-slate-400/30 absolute left-0 top-0 transition-all duration-1000' 
+                  style={{ width: `${Math.min(((upcomingRecurringTotal || 0) / (monthlyTotal || 1)) * 100, 100)}%` }} 
+                />
+              </div>
+              <div className='flex justify-between mt-3'>
+                <div className="flex flex-col">
+                  <span className='text-[9px] font-black text-slate-400 uppercase tracking-tighter'>Spent</span>
+                  <span className='text-xs font-bold text-slate-700 dark:text-slate-300'>₱{(totalSpent ?? 0).toFixed(0)}</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className='text-[9px] font-black text-slate-400 uppercase tracking-tighter'>Committed</span>
+                  <span className='text-xs font-bold text-slate-700 dark:text-slate-300'>₱{(upcomingRecurringTotal ?? 0).toFixed(0)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Expense Range */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3'>
-            {/* Highest Expense */}
-            <div className='bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm p-3 sm:p-4 rounded-xl border-l-4 border-l-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'>
-              <div className='flex items-center gap-2'>
-                <div className='w-6 h-6 bg-red-100 dark:bg-red-800 rounded-xl flex items-center justify-center flex-shrink-0'>
-                  <span className='text-sm leading-none text-red-600 dark:text-red-300 font-bold'>
-                    ↑
-                  </span>
+          {/* Average Daily Spending */}
+          <div className='bg-slate-900 dark:bg-indigo-600 rounded-[2rem] p-6 text-center relative overflow-hidden group'>
+            <Activity size={80} className="absolute -right-4 -bottom-4 text-white/5 group-hover:scale-110 transition-transform" />
+            <p className='text-[10px] font-black text-indigo-200/60 uppercase tracking-[0.2em] mb-2'>
+              Daily Burn Rate
+            </p>
+            <div className='text-3xl font-black text-white mb-3'>
+              ₱{averageExpense.toFixed(2)}
+            </div>
+            <div className='inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest'>
+              <CalendarDays size={12} />
+              Across {validDays} Active Days
+            </div>
+          </div>
+
+          {/* Range Grid */}
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='bg-slate-50 dark:bg-slate-800/40 p-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='w-6 h-6 bg-rose-500/10 rounded-lg flex items-center justify-center text-rose-500'>
+                  <TrendingUp size={14} />
                 </div>
-                <div className='flex-1'>
-                  <h4 className='font-bold text-gray-900 dark:text-gray-100 text-xs mb-0.5'>
-                    Highest
-                  </h4>
-                  <p className='text-lg font-bold text-red-600 dark:text-red-300'>
-                    {bestExpense !== undefined ? `₱${bestExpense}` : 'No data'}
-                  </p>
-                </div>
+                <span className='text-[9px] font-black text-slate-400 uppercase tracking-widest'>Peak</span>
               </div>
+              <p className='text-lg font-black text-slate-900 dark:text-white'>
+                {bestExpense !== undefined ? `₱${bestExpense}` : '—'}
+              </p>
             </div>
 
-            {/* Lowest Expense */}
-            <div className='bg-blue-50/80 dark:bg-blue-900/20 backdrop-blur-sm p-3 sm:p-4 rounded-xl border-l-4 border-l-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'>
-              <div className='flex items-center gap-2'>
-                <div className='w-6 h-6 bg-blue-100 dark:bg-blue-800 rounded-xl flex items-center justify-center flex-shrink-0'>
-                  <span className='text-sm leading-none text-blue-600 dark:text-blue-300 font-bold'>
-                    ↓
-                  </span>
+            <div className='bg-slate-50 dark:bg-slate-800/40 p-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-700/50'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500'>
+                  <TrendingDown size={14} />
                 </div>
-                <div className='flex-1'>
-                  <h4 className='font-bold text-gray-900 dark:text-gray-100 text-xs mb-0.5'>
-                    Lowest
-                  </h4>
-                  <p className='text-lg font-bold text-blue-600 dark:text-blue-300'>
-                    {worstExpense !== undefined
-                      ? `₱${worstExpense}`
-                      : 'No data'}
-                  </p>
-                </div>
+                <span className='text-[9px] font-black text-slate-400 uppercase tracking-widest'>Floor</span>
               </div>
+              <p className='text-lg font-black text-slate-900 dark:text-white'>
+                {worstExpense !== undefined ? `₱${worstExpense}` : '—'}
+              </p>
             </div>
           </div>
         </div>
       </div>
     );
   } catch (error) {
-    console.error('Error fetching expense statistics:', error);
     return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-        <div className='flex items-center gap-3 mb-6'>
-          <div className='w-12 h-12 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-xl'>📊</span>
+      <div className='bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-rose-100 dark:border-rose-900/30'>
+        <div className='flex flex-col items-center text-center gap-4'>
+          <div className='w-14 h-14 bg-rose-100 dark:bg-rose-900/40 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400'>
+            <AlertCircle size={32} />
           </div>
           <div>
-            <h3 className='text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent'>
-              Expense Statistics
+            <h3 className='text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight'>
+              Stats Unavailable
             </h3>
-            <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
-              Your spending insights and ranges
+            <p className='text-xs font-bold text-slate-400 uppercase tracking-widest mt-1'>
+              Check connection
             </p>
           </div>
-        </div>
-        <div className='bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm p-6 rounded-xl border-l-4 border-l-red-500'>
-          <div className='flex items-center gap-3 mb-2'>
-            <div className='w-8 h-8 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center'>
-              <span className='text-lg'>⚠️</span>
-            </div>
-            <p className='text-red-800 dark:text-red-300 font-semibold'>
-              Unable to load expense statistics
-            </p>
-          </div>
-          <p className='text-red-700 dark:text-red-400 text-sm ml-11'>
-            Please try again later
-          </p>
         </div>
       </div>
     );

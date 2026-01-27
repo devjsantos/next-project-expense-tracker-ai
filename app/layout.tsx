@@ -1,12 +1,12 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { ClerkProvider } from '@clerk/nextjs'; // ✅ use Clerk's official provider
+import { ClerkProvider } from '@clerk/nextjs';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import ToastProvider from '@/components/ToastProvider';
-import ClerkThemeProvider from '@/components/ClerkThemeProvider'; // your custom theme wrapper
+import ClerkThemeProvider from '@/components/ClerkThemeProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,8 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'SmartJuanPeso AI - Smart Financial Management',
-  description:
-    'AI-powered expense tracking app with intelligent insights, smart categorization, and personalized financial recommendations',
+  description: 'AI-powered expense tracking app with intelligent insights.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon-192x192.png',
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -43,40 +42,41 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#10b981" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-      (function() {
-        try {
-          var theme = localStorage.getItem('theme');
-          var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (theme === 'dark' || (!theme && supportDark)) {
-            document.documentElement.classList.add('dark');
-          }
-        } catch (e) {}
-      })();
-    `,
-          }}
-        />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300`}
-      >
-        <ThemeProvider>
-          <ClerkProvider>
-            {/* Your custom Clerk styling */}
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning className="scroll-smooth">
+        <head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  try {
+                    var theme = localStorage.getItem('theme');
+                    var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if (theme === 'dark' || (!theme && supportDark)) {
+                      document.documentElement.classList.add('dark');
+                    }
+                  } catch (e) {}
+                })();
+              `,
+            }}
+          />
+        </head>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-500`}
+        >
+          <ThemeProvider>
             <ClerkThemeProvider>
               <Navbar />
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                <div className="flex-1 flex flex-col">
+                  {children}
+                </div>
+              </ToastProvider>
               <Footer />
             </ClerkThemeProvider>
-          </ClerkProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

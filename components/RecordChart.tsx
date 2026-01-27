@@ -1,94 +1,75 @@
 import { getRecords } from '@/app/actions/getRecords';
-import BarChart from './BarChart'; // Ensure BarChart.tsx or BarChart.jsx exists in the same directory
+import BarChart from './BarChart';
+import { BarChart3, AlertCircle, TrendingUp, Inbox } from 'lucide-react';
 
 const RecordChart = async () => {
   const { records, error } = await getRecords();
 
+  // ERROR STATE
   if (error) {
     return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-        <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-          <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-sm sm:text-lg'>📊</span>
-          </div>
-          <div>
-            <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-              Expense Chart
-            </h3>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-              Visual representation of your spending
-            </p>
-          </div>
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/30 rounded-[2rem] flex items-center justify-center mb-4 border border-red-100 dark:border-red-900/50">
+          <AlertCircle className="text-red-500" size={32} />
         </div>
-        <div className='bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm p-3 sm:p-4 rounded-xl border-l-4 border-l-red-500'>
-          <div className='flex items-center gap-2 mb-2'>
-            <div className='w-6 h-6 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center'>
-              <span className='text-sm'>⚠️</span>
-            </div>
-            <p className='text-red-800 dark:text-red-300 font-semibold text-sm'>
-              Error loading chart data
-            </p>
-          </div>
-          <p className='text-red-700 dark:text-red-400 text-xs ml-8'>{error}</p>
-        </div>
+        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">
+          Analytics Unavailable
+        </h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] leading-relaxed">
+          {error || "We couldn't sync your transaction flow."}
+        </p>
       </div>
     );
   }
 
+  // EMPTY STATE
   if (!records || records.length === 0) {
     return (
-      <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-        <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-          <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-            <span className='text-white text-sm sm:text-lg'>📊</span>
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="relative mb-6">
+          <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] flex items-center justify-center border border-slate-100 dark:border-slate-700/50">
+            <Inbox className="text-slate-300 dark:text-slate-600" size={40} />
           </div>
-          <div>
-            <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-              Expense Chart
-            </h3>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-              Visual representation of your spending
-            </p>
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-lg">
+            <TrendingUp size={14} className="text-white" />
           </div>
         </div>
-        <div className='text-center py-6 sm:py-8'>
-          <div className='w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg'>
-            <span className='text-2xl sm:text-3xl'>📈</span>
-          </div>
-          <h4 className='text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200 mb-2'>
-            No Data to Display
-          </h4>
-          <p className='text-gray-600 dark:text-gray-400 max-w-md mx-auto leading-relaxed text-sm'>
-            Start tracking your expenses to see your spending patterns
-            visualized in this chart.
-          </p>
-        </div>
+        <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">
+          Chart is hungry
+        </h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[240px] leading-relaxed font-medium">
+          Feed your dashboard some data! Your spending patterns will appear here once you log your first record.
+        </p>
       </div>
     );
   }
 
+  // SUCCESS STATE (The Chart itself)
   return (
-    <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl'>
-      <div className='flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6'>
-        <div className='w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-          <span className='text-white text-sm sm:text-lg'>📊</span>
-        </div>
-        <div>
-          <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-            Expense Chart
-          </h3>
-          <p className='text-xs text-gray-500 dark:text-gray-400 mt-0.5'>
-            Visual representation of your spending
-          </p>
-        </div>
-      </div>
-      <div className='overflow-x-auto'>
+    <div className="w-full h-full animate-in fade-in duration-700">
+      {/* Chart Wrapper to handle overflow on mobile */}
+      <div className="min-h-[300px] w-full touch-pan-x overflow-x-auto custom-scrollbar">
         <BarChart
           records={records.map((record) => ({
             ...record,
             date: String(record.date),
           }))}
         />
+      </div>
+
+      {/* Subtle Legend/Footer for the Chart */}
+      <div className="mt-6 flex items-center justify-between px-2">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Expenses</span>
+          </div>
+          <div className="flex items-center gap-1.5 opacity-40">
+            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</span>
+          </div>
+        </div>
+        <p className="text-[9px] font-black uppercase text-indigo-500/80 tracking-tighter">Real-time Sync</p>
       </div>
     </div>
   );

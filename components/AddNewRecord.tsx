@@ -1,11 +1,25 @@
 'use client';
 
-import { useRef, useState, ChangeEvent, useEffect } from 'react';
+import React, { useRef, useState, ChangeEvent, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import addExpenseRecord from '@/app/actions/addExpenseRecord';
 import { scanReceipt } from '@/app/actions/scanReceipt';
 import { suggestCategory } from '@/app/actions/suggestCategory';
 import { useToast } from '@/components/ToastProvider';
+import { 
+  Plus, 
+  Camera, 
+  Edit3, 
+  ChevronLeft, 
+  Sparkles, 
+  Calendar, 
+  Tag, 
+  ChevronDown, 
+  X, 
+  Loader2, 
+  ScanLine,
+  Wallet
+} from 'lucide-react';
 
 // --- Improved Types ---
 interface BudgetAlert {
@@ -98,11 +112,8 @@ const AddRecord = () => {
 
     try {
       const { base64, mimeType } = await resizeImage(file);
-
-      // reset cancellation flag
       cancelledRef.current = false;
 
-      // Try client-side OCR first (web worker). If it fails, fallback to server AI scan.
       if (typeof window !== 'undefined' && window.Worker) {
         if (workerRef.current) {
           try { workerRef.current.terminate(); } catch (e) { /* ignore */ }
@@ -112,9 +123,8 @@ const AddRecord = () => {
         const worker = new Worker('/workers/tesseract-worker.js');
         workerRef.current = worker;
         setOcrProgress(0);
-        setOcrStatus('Starting OCR');
+        setOcrStatus('Initializing OCR');
 
-        // update progress messages live
         worker.onmessage = (ev: MessageEvent) => {
           const msg = ev.data || {};
           if (msg.type === 'progress' && msg.progress) {
@@ -155,7 +165,6 @@ const AddRecord = () => {
         const raced = await Promise.race([messagePromise, cancelPromise]);
 
         if ((raced as any).canceled) {
-          // Cancelled by user
           try { worker.terminate(); } catch (e) { /* ignore */ }
           workerRef.current = null;
           setIsScanning(false);
@@ -188,17 +197,13 @@ const AddRecord = () => {
           setIsScanning(false);
           return;
         }
-
-        // Worker failed or returned error; terminate and fallback to server
         try { worker.terminate(); } catch (e) { /* ignore */ }
         workerRef.current = null;
       }
 
-      // If we reach here, client OCR did not produce results — call server scan as fallback
       const result = (await scanReceipt(base64, mimeType)) as unknown as ScanResponse;
 
       if (cancelledRef.current) {
-        // user cancelled while server request was in-flight
         setIsScanning(false);
         return;
       }
@@ -212,7 +217,7 @@ const AddRecord = () => {
 
       throw new Error(result.error || 'Scan failed');
     } catch (err: any) {
-      addToast(err.message || 'AI Busy. Please fill details manually.', 'warning');
+      addToast(err.message || 'AI Busy. Manual entry required.', 'warning');
       setView('form');
     } finally {
       setIsScanning(false);
@@ -224,7 +229,7 @@ const AddRecord = () => {
     setDescription(data.description || '');
     setAmount(String(data.amount || ''));
     setCategory(data.category || '');
-    addToast('Parsed receipt applied — please verify and save.', 'info');
+    addToast('Receipt data applied.', 'info');
     setShowReviewModal(false);
     setScannedPreview(null);
     setView('form');
@@ -234,7 +239,6 @@ const AddRecord = () => {
     setShowReviewModal(false);
     setScannedPreview(null);
     setView('form');
-    addToast('You can fill details manually.', 'info');
   };
 
   const handleAISuggestCategory = async () => {
@@ -270,11 +274,9 @@ const AddRecord = () => {
       if (result.error) {
         addToast(`Error: ${result.error}`, 'error');
       } else {
-        addToast('Expense added successfully!', 'success');
+        addToast('Transaction recorded', 'success');
         const maybeAlerts = (result.alerts || []) as BudgetAlert[];
-        maybeAlerts.forEach(a => {
-          addToast(a.message, a.type as 'info' | 'warning' | 'success');
-        });
+        maybeAlerts.forEach(a => addToast(a.message, a.type as 'info' | 'warning' | 'success'));
 
         setAmount(''); setCategory(''); setDescription(''); setDate(getTodayDate());
         setTimeout(() => setView('select'), 500);
@@ -284,7 +286,7 @@ const AddRecord = () => {
         if (maybeAlerts.length > 0) window.dispatchEvent(new CustomEvent('notifications:changed'));
       }
     } catch (err) {
-      addToast('Server error. Try again.', 'error');
+      addToast('Sync failed. Try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -293,36 +295,25 @@ const AddRecord = () => {
   const LoadingOverlay = () => {
     if (!isScanning || !mounted) return null;
     return createPortal(
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-[1.5rem] shadow-2xl flex flex-col items-center gap-4 border border-gray-100 dark:border-gray-700 max-w-sm w-full">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">AI Vision Scanning...</p>
-          {ocrStatus && <p className="text-sm text-gray-500 mt-2">{ocrStatus}</p>}
-          {ocrProgress !== null && (
-            <div className="w-full mt-4">
-              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="h-2 bg-indigo-600" style={{ width: `${ocrProgress}%` }} />
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">{ocrProgress}%</p>
-            </div>
-          )}
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={() => {
-                if (workerRef.current) {
-                  try { workerRef.current.terminate(); } catch (e) { /* ignore */ }
-                  workerRef.current = null;
-                }
-                setIsScanning(false);
-                setOcrProgress(null);
-                setOcrStatus(null);
-                addToast('OCR cancelled', 'info');
-              }}
-              className="px-3 py-2 rounded-xl bg-gray-100"
-            >
-              Cancel OCR
-            </button>
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-6 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-300">
+        <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 border border-slate-100 dark:border-slate-800 max-w-sm w-full relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-slate-100 dark:bg-slate-800">
+            <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${ocrProgress || 0}%` }} />
           </div>
+          <div className="relative">
+             <div className="w-20 h-20 border-[6px] border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+             <ScanLine className="absolute inset-0 m-auto text-indigo-500 animate-pulse" size={32} />
+          </div>
+          <div className="text-center">
+            <p className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm">Vision Analysis</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-2 animate-pulse">{ocrStatus || 'Parsing Elements...'}</p>
+          </div>
+          <button
+            onClick={() => { cancelledRef.current = true; setIsScanning(false); }}
+            className="mt-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors"
+          >
+            Abort Scan
+          </button>
         </div>
       </div>,
       document.body
@@ -330,111 +321,143 @@ const AddRecord = () => {
   };
 
   return (
-    <div className='relative bg-white dark:bg-gray-900 p-5 sm:p-6 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden'>
+    <div className='relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800/50 overflow-hidden'>
       <LoadingOverlay />
 
       {view === 'select' ? (
-        <div className="space-y-4 py-4 animate-in fade-in zoom-in-95 duration-300">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-6 py-4 animate-in fade-in zoom-in-95 duration-500">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">New Entry</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Select Input Method</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <button
               onClick={() => setView('form')}
-              className="flex flex-col items-center justify-center gap-3 p-8 bg-gray-50/50 dark:bg-gray-800/30 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[2rem] hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all group"
+              className="group flex flex-col items-center justify-center gap-4 p-10 bg-slate-50 dark:bg-slate-800/40 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2.5rem] hover:border-indigo-500 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95"
             >
-              <span className="text-4xl">✏️</span>
+              <div className="w-16 h-16 bg-white dark:bg-slate-700 rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                <Edit3 size={28} />
+              </div>
               <div className="text-center">
-                <span className="block font-black text-[10px] uppercase tracking-widest text-gray-400 group-hover:text-indigo-600">Manual Entry</span>
-                <span className="font-bold text-sm text-gray-900 dark:text-white">Type Details</span>
+                <span className="block font-black text-[10px] uppercase tracking-widest text-slate-400 group-hover:text-indigo-600 transition-colors">Manual</span>
+                <span className="font-black text-sm text-slate-900 dark:text-white">Type Details</span>
               </div>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-3 p-8 bg-indigo-600 rounded-[2rem] hover:bg-indigo-700 shadow-xl shadow-indigo-500/40 transition-all group active:scale-95"
+              className="group flex flex-col items-center justify-center gap-4 p-10 bg-indigo-600 rounded-[2.5rem] hover:bg-indigo-700 shadow-2xl shadow-indigo-500/40 transition-all active:scale-95 relative overflow-hidden"
             >
-              <span className="text-4xl">📸</span>
-              <div className="text-center">
-                <span className="block font-black text-[10px] uppercase tracking-widest text-indigo-200">AI Scanner</span>
-                <span className="font-bold text-sm text-white">Scan Receipt</span>
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Sparkles size={80} />
+              </div>
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md transition-all group-hover:scale-110">
+                <Camera size={28} className="text-white" />
+              </div>
+              <div className="text-center relative z-10">
+                <span className="block font-black text-[10px] uppercase tracking-widest text-indigo-200">AI Engine</span>
+                <span className="font-black text-sm text-white">Scan Receipt</span>
               </div>
             </button>
           </div>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleReceiptCapture} />
         </div>
       ) : (
-        <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={() => setView('select')} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-500 hover:text-indigo-600 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
+        <div className="animate-in slide-in-from-right-8 fade-in duration-500">
+          <div className="flex items-center justify-between mb-10">
+            <button onClick={() => setView('select')} className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:bg-indigo-600 hover:text-white transition-all">
+              <ChevronLeft size={20} strokeWidth={3} />
             </button>
-            <h3 className='text-xs font-black text-gray-400 uppercase tracking-[0.2em]'>Expense Details</h3>
-            <div className="w-9" />
+            <h3 className='text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]'>Transaction Details</h3>
+            <div className="w-10" />
           </div>
 
-          <form onSubmit={clientAction} className='space-y-4'>
+          <form onSubmit={clientAction} className='space-y-6'>
+            {/* LABEL INPUT */}
             <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors">
+                <Tag size={18} />
+              </div>
               <input
                 type='text'
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder='Merchant name...'
-                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl font-bold focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400 text-gray-900 dark:text-white'
+                placeholder='Merchant / Service...'
+                className='w-full pl-12 pr-28 py-5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-white'
                 required
               />
               <button
                 type="button"
                 onClick={handleAISuggestCategory}
                 disabled={!description.trim() || isCategorizingAI}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black shadow-lg disabled:opacity-0 transition-all active:scale-90"
+                className="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg disabled:opacity-0 transition-all active:scale-95 flex items-center gap-2"
               >
-                {isCategorizingAI ? '...' : '✨ AI CAT'}
+                {isCategorizingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                AI
               </button>
             </div>
 
+            {/* CATEGORY & DATE */}
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 appearance-none text-gray-900 dark:text-white'
-                required
-              >
-                <option value='' disabled>Category</option>
-                <option value='Food'>Food & Dining</option>
-                <option value='Transportation'>Transportation</option>
-                <option value='Shopping'>Shopping</option>
-                <option value='Entertainment'>Entertainment</option>
-                <option value='Bills'>Bills & Utilities</option>
-                <option value='Healthcare'>Healthcare</option>
-                <option value='Other'>Other</option>
-              </select>
-              <input 
-                type='date' 
-                value={date} 
-                onChange={(e) => setDate(e.target.value)} 
-                className='w-full px-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 text-gray-900 dark:text-white' 
-              />
+              <div className="relative group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors z-10">
+                  <Wallet size={18} />
+                </div>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className='w-full pl-12 pr-10 py-5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-[12px] font-black uppercase tracking-wider outline-none focus:border-indigo-500 appearance-none text-slate-900 dark:text-white cursor-pointer relative'
+                  required
+                >
+                  <option value='' disabled>Category</option>
+                  <option value='Food'>Food & Dining</option>
+                  <option value='Transportation'>Transportation</option>
+                  <option value='Shopping'>Shopping</option>
+                  <option value='Entertainment'>Entertainment</option>
+                  <option value='Bills'>Bills & Utilities</option>
+                  <option value='Healthcare'>Healthcare</option>
+                  <option value='Other'>Other</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              <div className="relative group">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors">
+                  <Calendar size={18} />
+                </div>
+                <input 
+                  type='date' 
+                  value={date} 
+                  onChange={(e) => setDate(e.target.value)} 
+                  className='w-full pl-14 pr-5 py-5 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-[13px] font-black outline-none focus:border-indigo-500 text-slate-900 dark:text-white' 
+                />
+              </div>
             </div>
 
-            <div className='relative'>
-              <span className='absolute left-4 top-1/2 -translate-y-1/2 font-black text-indigo-600 text-2xl'>₱</span>
+            {/* AMOUNT INPUT */}
+            <div className='relative group'>
+              <span className='absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 group-focus-within:text-indigo-500 transition-colors text-3xl'>₱</span>
               <input
                 type='number'
                 step="any"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className='w-full pl-12 pr-4 py-5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-2xl text-3xl font-black focus:border-indigo-600 outline-none transition-all text-gray-900 dark:text-white'
+                className='w-full pl-14 pr-6 py-7 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-[2rem] text-4xl font-black focus:border-indigo-600 outline-none transition-all text-slate-900 dark:text-white placeholder:text-slate-200'
                 required
               />
             </div>
 
-            <button type='submit' disabled={isLoading} className='w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-all disabled:opacity-50'>
-              {isLoading ? 'Processing...' : 'Save Expense'}
+            <button type='submit' disabled={isLoading} className='group w-full py-6 bg-slate-900 dark:bg-indigo-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3'>
+              {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} strokeWidth={3} />}
+              {isLoading ? 'Processing' : 'Log Transaction'}
             </button>
           </form>
         </div>
       )}
 
-      {/* Review Modal for OCR/AI parsed receipt */}
+      {/* REVIEW MODAL */}
       {showReviewModal && scannedPreview && (
         <ReviewModal 
           data={scannedPreview} 
@@ -447,53 +470,58 @@ const AddRecord = () => {
   );
 };
 
-// Sub-component to isolate the 'null' check logic and keep code clean
-const ReviewModal = ({ 
-  data, 
-  onCancel, 
-  onConfirm,
-  onUpdate 
-}: { 
-  data: ScanData; 
-  onCancel: () => void; 
-  onConfirm: (d: ScanData) => void;
-  onUpdate: React.Dispatch<React.SetStateAction<ScanData | null>>;
-}) => {
+const ReviewModal = ({ data, onCancel, onConfirm, onUpdate }: any) => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-100 dark:border-gray-800">
-        <h4 className="text-lg font-black mb-3">Review Parsed Receipt</h4>
-        <p className="text-sm text-gray-500 mb-4">The AI/OCR parsed these fields — please verify before saving.</p>
-
-        <div className="space-y-3 mb-4">
-          <label className="block text-xs font-bold uppercase text-gray-500">Description</label>
-          <input 
-            className="w-full px-3 py-2 rounded-xl border" 
-            defaultValue={data.description || ''} 
-            onChange={(e) => onUpdate(prev => prev ? { ...prev, description: e.target.value } : prev)} 
-          />
-
-          <label className="block text-xs font-bold uppercase text-gray-500">Amount</label>
-          <input 
-            type="number" 
-            step="any" 
-            className="w-full px-3 py-2 rounded-xl border" 
-            defaultValue={data.amount ?? ''} 
-            onChange={(e) => onUpdate(prev => prev ? { ...prev, amount: e.target.value ? Number(e.target.value) : undefined } : prev)} 
-          />
-
-          <label className="block text-xs font-bold uppercase text-gray-500">Category</label>
-          <input 
-            className="w-full px-3 py-2 rounded-xl border" 
-            defaultValue={data.category || ''} 
-            onChange={(e) => onUpdate(prev => prev ? { ...prev, category: e.target.value } : prev)} 
-          />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in" onClick={onCancel} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl p-10 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center text-white">
+            <ScanLine size={24} />
+          </div>
+          <div>
+            <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Review Scan</h4>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Verify AI Logic</p>
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100">Cancel</button>
-          <button onClick={() => onConfirm(data)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white">Apply</button>
+        <div className="space-y-5 mb-10">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Merchant</label>
+            <input 
+              className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-indigo-500 outline-none" 
+              value={data.description || ''} 
+              onChange={(e) => onUpdate((prev: any) => ({ ...prev, description: e.target.value }))} 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">₱</span>
+                <input 
+                  type="number" 
+                  className="w-full pl-9 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-black text-slate-900 dark:text-white focus:border-indigo-500 outline-none" 
+                  value={data.amount ?? ''} 
+                  onChange={(e) => onUpdate((prev: any) => ({ ...prev, amount: e.target.value }))} 
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+              <input 
+                className="w-full px-5 py-4 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-transparent rounded-2xl font-black text-xs text-indigo-500 uppercase tracking-widest" 
+                value={data.category || 'PENDING...'} 
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button onClick={onCancel} className="py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black uppercase text-[10px] tracking-widest">Discard</button>
+          <button onClick={() => onConfirm(data)} className="py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase text-[10px] tracking-widest">Apply</button>
         </div>
       </div>
     </div>
