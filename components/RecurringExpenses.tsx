@@ -19,9 +19,9 @@ export default function RecurringExpenses() {
   const [isManageMode, setIsManageMode] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Recurring | null>(null);
-  
-  const [form, setForm] = useState({ 
-    text: '', amount: '', category: 'Bills', startDate: new Date().toISOString().split('T')[0], frequency: 'monthly', active: true 
+
+  const [form, setForm] = useState({
+    text: '', amount: '', category: 'Bills', startDate: new Date().toISOString().split('T')[0], frequency: 'monthly', active: true
   });
 
   const fetchItems = useCallback(async () => {
@@ -43,13 +43,20 @@ export default function RecurringExpenses() {
       return acc + curr.amount;
     }, 0);
 
+  // --- START OF LOGIC BLOCK ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      ...form,
+      amount: parseFloat(form.amount),
+      nextDueDate: new Date(form.startDate).toISOString(),
+    };
+
     try {
       const res = await fetch('/api/recurring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: parseFloat(form.amount) }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (json.item) {
@@ -63,11 +70,17 @@ export default function RecurringExpenses() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
+
+    const updatedPayload = {
+      ...editingItem,
+      nextDueDate: new Date(editingItem.startDate).toISOString(),
+    };
+
     try {
       const res = await fetch('/api/recurring', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingItem),
+        body: JSON.stringify(updatedPayload),
       });
       const json = await res.json();
       if (json.item) {
@@ -87,10 +100,10 @@ export default function RecurringExpenses() {
 
   const toggleActive = async (id: string, active: boolean) => {
     try {
-      const res = await fetch('/api/recurring', { 
-        method: 'PUT', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ id, active: !active }) 
+      const res = await fetch('/api/recurring', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, active: !active })
       });
       const json = await res.json();
       if (json.item) setItems(prev => prev.map(i => i.id === id ? json.item : i));
@@ -110,13 +123,13 @@ export default function RecurringExpenses() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all"
             >
               <Plus size={20} strokeWidth={3} />
             </button>
-            <button 
+            <button
               onClick={() => setIsManageMode(!isManageMode)}
               className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${isManageMode ? 'bg-slate-900 text-white border-slate-900' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}
             >
@@ -137,9 +150,9 @@ export default function RecurringExpenses() {
       <div className="p-4 sm:p-6">
         <div className='space-y-3 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar'>
           {items.length === 0 && !loading && (
-             <div className="text-center py-12 opacity-30 font-bold text-[10px] uppercase tracking-widest">No Active Rules</div>
+            <div className="text-center py-12 opacity-30 font-bold text-[10px] uppercase tracking-widest">No Active Rules</div>
           )}
-          
+
           {items.map(item => (
             <div key={item.id} className='group flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900 rounded-2xl transition-all'>
               <div className="flex items-center gap-4 min-w-0">
@@ -147,7 +160,7 @@ export default function RecurringExpenses() {
                 <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all ${item.active ? 'bg-indigo-50 dark:bg-slate-700 text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-400 opacity-60'}`}>
                   {item.frequency.charAt(0).toUpperCase()}
                 </div>
-                
+
                 <div className="min-w-0">
                   <div className={`font-bold text-sm sm:text-base truncate ${item.active ? 'text-slate-900 dark:text-white' : 'text-slate-400 line-through'}`}>
                     {item.text}
@@ -159,7 +172,7 @@ export default function RecurringExpenses() {
                   </div>
                 </div>
               </div>
-              
+
               <div className='flex-shrink-0 ml-3'>
                 {isManageMode ? (
                   <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-2">
@@ -196,36 +209,36 @@ export default function RecurringExpenses() {
                 {editingItem ? 'Edit Rule' : 'New Rule'}
               </h3>
             </div>
-            
+
             <form onSubmit={editingItem ? handleUpdate : handleCreate} className="space-y-4">
               <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Description</label>
-                <input 
+                <input
                   className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none transition-all text-sm"
                   placeholder="e.g. Netflix"
-                  value={editingItem ? editingItem.text : form.text} 
-                  onChange={e => editingItem ? setEditingItem({...editingItem, text: e.target.value}) : setForm({...form, text: e.target.value})} 
+                  value={editingItem ? editingItem.text : form.text}
+                  onChange={e => editingItem ? setEditingItem({ ...editingItem, text: e.target.value }) : setForm({ ...form, text: e.target.value })}
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Amount</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm"
-                    value={editingItem ? editingItem.amount : form.amount} 
-                    onChange={e => editingItem ? setEditingItem({...editingItem, amount: parseFloat(e.target.value)}) : setForm({...form, amount: e.target.value})} 
+                    value={editingItem ? editingItem.amount : form.amount}
+                    onChange={e => editingItem ? setEditingItem({ ...editingItem, amount: parseFloat(e.target.value) }) : setForm({ ...form, amount: e.target.value })}
                     required
                   />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Cycle</label>
-                  <select 
+                  <select
                     className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm appearance-none"
                     value={editingItem ? editingItem.frequency : form.frequency}
-                    onChange={e => editingItem ? setEditingItem({...editingItem, frequency: e.target.value}) : setForm({...form, frequency: e.target.value})}
+                    onChange={e => editingItem ? setEditingItem({ ...editingItem, frequency: e.target.value }) : setForm({ ...form, frequency: e.target.value })}
                   >
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
