@@ -12,12 +12,8 @@ import AuthRefreshOnSignIn from '@/components/AuthRefreshOnSignIn';
 
 export default async function HomePage() {
   const user = await checkUser();
-  // console.log('checkUser:', user);
 
   if (!user) {
-    // Render `Guest` and include a small client helper that will reload
-    // the page once Clerk finishes signing in so the server will see
-    // the session on the next request (avoids needing a manual click).
     return (
       <>
         <Guest />
@@ -26,93 +22,79 @@ export default async function HomePage() {
     );
   }
 
-  // ✅ Safely derive first name from DB "name"
-  const firstName =
-    user.name?.split(' ')[0] || 'User';
+  const firstName = user.name?.split(' ')[0] || 'User';
 
   return (
-    <main className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* LEFT COLUMN */}
-          <div className="space-y-4 sm:space-y-6">
-            {/* WELCOME CARD */}
-            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-              {/* AVATAR */}
-              <div className="relative flex-shrink-0">
-                <Image
-                  src={user.imageUrl || '/default-avatar.png'}
-                  alt={`${firstName}'s profile`}
-                  width={80}
-                  height={80}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-white dark:border-gray-600 shadow-lg object-cover"
-                />
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-              </div>
-
-              {/* USER INFO */}
-              <div className="flex-1 text-center sm:text-left">
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 mb-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <span className="text-white text-sm sm:text-lg">👋</span>
-                  </div>
-                  <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    Welcome Back, {firstName}!
-                  </h2>
-                </div>
-
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto sm:mx-0">
-                  Here&#39;s a quick overview of your recent expense activity.
-                  Track your spending, analyze patterns, and manage your budget efficiently!
-                </p>
-
-                {/* BADGES */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                  {/* JOINED */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 border border-indigo-100 dark:border-indigo-800 px-3 py-2 rounded-xl flex items-center gap-2">
-                    <span className="text-xs">📅</span>
-                    <div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                        Joined
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* LAST ACTIVE (using updatedAt) */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border border-blue-100 dark:border-blue-800 px-3 py-2 rounded-xl flex items-center gap-2">
-                    <span className="text-xs">⚡</span>
-                    <div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                        Last Active
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {new Date(user.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <main className="bg-[#f8fafc] dark:bg-[#0f172a] min-h-screen pb-12 transition-colors duration-300">
+      <header className="sticky top-0 z-30 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Image
+                src={user.imageUrl || '/default-avatar.png'}
+                alt="Profile"
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full border-2 border-indigo-500 p-0.5 object-cover"
+              />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
             </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Dashboard</p>
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Hello, {firstName}</h1>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+            <span className="animate-pulse w-2 h-2 bg-indigo-500 rounded-full"></span>
+            <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Active</span>
+          </div>
+        </div>
+      </header>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
+        
+        {/* TOP SECTION: Stats and Quick Add */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <section className="lg:col-span-8 bg-indigo-600 rounded-[2.5rem] p-6 shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
+            <div className="relative z-10">
+              <p className="text-indigo-100 text-xs font-black uppercase tracking-widest mb-1">Financial Health</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-6">Overview</h2>
+              <ExpenseStats /> 
+            </div>
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl"></div>
+          </section>
+
+          <div className="lg:col-span-4 h-full">
             <AddNewRecord />
           </div>
+        </div>
 
-          {/* RIGHT COLUMN */}
-          <div className="space-y-4 sm:space-y-6">
-            <RecordChart />
-            <ExpenseStats />
+        {/* MIDDLE SECTION: Chart and AI - Large Space for Visuals */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Chart gets a wider display now */}
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 border border-slate-100 dark:border-slate-700 shadow-xl">
+             <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Spending Trends</h3>
+                  <p className="text-lg font-bold text-slate-800 dark:text-white">Analysis</p>
+                </div>
+                <span className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl">📊</span>
+             </div>
+             <div className="w-full min-h-[300px]">
+               <RecordChart />
+             </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-1 border border-slate-100 dark:border-slate-700 shadow-xl overflow-hidden">
+            <AIInsights />
           </div>
         </div>
 
-        <div className="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
-          <AIInsights />
+        {/* BOTTOM SECTION: Full Width History */}
+        <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-2 border border-slate-100 dark:border-slate-700 shadow-xl">
           <RecordHistory />
         </div>
+
       </div>
     </main>
   );

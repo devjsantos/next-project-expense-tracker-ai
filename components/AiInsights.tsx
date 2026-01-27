@@ -237,21 +237,30 @@ const AIInsights = () => {
         })}
       </div>
 
-      <div className='mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row gap-3 items-center justify-between'>
+      {/* FOOTER SECTION */}
+      <div className='mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between'>
+
+        {/* VERSION TAG - Now always visible, sits on top of buttons on mobile/tablet */}
         <div className='flex items-center gap-2 text-gray-400 dark:text-gray-500'>
-          <span className='text-[10px] font-black uppercase tracking-[0.2em]'>AI Engine v3.0</span>
+          <div className='w-1 h-1 rounded-full bg-indigo-400 animate-pulse' />
+          <span className='text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap'>
+            AI Engine v3.0
+          </span>
         </div>
-        <div className='flex gap-2 w-full sm:w-auto'>
+
+        {/* BUTTON GROUP - Adaptive width to prevent horizontal overflow */}
+        <div className='flex flex-col sm:flex-row gap-2 w-full md:w-auto'>
           <button
             onClick={handleEmailReport}
             disabled={isEmailing}
-            className='flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 rounded-xl font-black uppercase text-[10px] tracking-widest border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-sm'
+            className='flex-1 md:flex-none px-4 py-3 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-sm whitespace-nowrap'
           >
             {isEmailing ? 'Sending...' : '📧 Email Report'}
           </button>
+
           <button
             onClick={loadInsights}
-            className='flex-1 sm:flex-none px-5 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95'
+            className='flex-1 md:flex-none px-5 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95 text-center whitespace-nowrap'
           >
             Refresh Insights
           </button>

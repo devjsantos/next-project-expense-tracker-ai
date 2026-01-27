@@ -14,21 +14,15 @@ async function getBestWorstExpense(): Promise<{
   }
 
   try {
-    // Fetch all records for the authenticated user
-    const records = await db.records.findMany({
+    // Use DB aggregation to compute max and min directly
+    const agg = await db.records.aggregate({
       where: { userId },
-      select: { amount: true }, // Fetch only the `amount` field for efficiency
+      _max: { amount: true },
+      _min: { amount: true },
     });
 
-    if (!records || records.length === 0) {
-      return { bestExpense: 0, worstExpense: 0 }; // Return 0 if no records exist
-    }
-
-  const amounts = records.map((record: { amount: number }) => record.amount);
-
-    // Calculate best and worst expense amounts
-    const bestExpense = Math.max(...amounts); // Highest amount
-    const worstExpense = Math.min(...amounts); // Lowest amount
+    const bestExpense = agg._max.amount ?? 0;
+    const worstExpense = agg._min.amount ?? 0;
 
     return { bestExpense, worstExpense };
   } catch (error) {

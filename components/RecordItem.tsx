@@ -30,7 +30,6 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
   const [editData, setEditData] = useState({
     text: record.text,
     amount: record.amount.toString(),
-    category: record.category,
     date: new Date(record.date).toISOString().split('T')[0]
   });
 
@@ -65,7 +64,7 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
         id: record.id,
         text: editData.text.trim(),
         amount: parsedAmount,
-        category: editData.category,
+        category: record.category, // Keep original category
         date: new Date(editData.date).toISOString(),
       };
 
@@ -87,7 +86,6 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
         window.dispatchEvent(new CustomEvent('records:changed'));
         window.dispatchEvent(new CustomEvent('budget:changed'));
 
-        // Correctly typed alert handling
         if (result.alerts && Array.isArray(result.alerts)) {
           (result.alerts as BudgetAlert[]).forEach((alertItem) => {
             addToast(alertItem.message, alertItem.type);
@@ -161,20 +159,11 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Category</label>
-                  <select
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl font-bold text-sm text-gray-900 dark:text-white"
-                    value={editData.category}
-                    onChange={e => setEditData({ ...editData, category: e.target.value })}
-                  >
-                    <option value="Food">Food</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Bills">Bills</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Category (Fixed)</label>
+                  <div className="w-full p-3 bg-gray-100 dark:bg-gray-800/50 border-2 border-transparent rounded-xl font-bold text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 cursor-not-allowed">
+                    <span>{getCategoryEmoji(record.category)}</span>
+                    {record.category}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Amount</label>

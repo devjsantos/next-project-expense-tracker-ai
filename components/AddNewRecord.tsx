@@ -13,13 +13,15 @@ interface BudgetAlert {
   message: string;
 }
 
+interface ScanData {
+  description?: string;
+  amount?: string | number;
+  category?: string;
+}
+
 interface ScanResponse {
   success: boolean;
-  data: {
-    description?: string;
-    amount?: string | number;
-    category?: string;
-  } | null;
+  data: ScanData | null;
   error: string | null;
 }
 
@@ -68,8 +70,24 @@ const AddRecord = () => {
   const [isCategorizingAI, setIsCategorizingAI] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [scannedPreview, setScannedPreview] = useState<ScanData | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<number | null>(null);
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const cancelledRef = useRef(false);
+
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        try { workerRef.current.terminate(); } catch (e) { /* ignore */ }
+        workerRef.current = null;
+      }
+    };
   }, []);
 
   const handleReceiptCapture = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -80,17 +98,119 @@ const AddRecord = () => {
 
     try {
       const { base64, mimeType } = await resizeImage(file);
+
+      // reset cancellation flag
+      cancelledRef.current = false;
+
+      // Try client-side OCR first (web worker). If it fails, fallback to server AI scan.
+      if (typeof window !== 'undefined' && window.Worker) {
+        if (workerRef.current) {
+          try { workerRef.current.terminate(); } catch (e) { /* ignore */ }
+          workerRef.current = null;
+        }
+
+        const worker = new Worker('/workers/tesseract-worker.js');
+        workerRef.current = worker;
+        setOcrProgress(0);
+        setOcrStatus('Starting OCR');
+
+        // update progress messages live
+        worker.onmessage = (ev: MessageEvent) => {
+          const msg = ev.data || {};
+          if (msg.type === 'progress' && msg.progress) {
+            const prog = msg.progress.progress;
+            const p = typeof prog === 'number' ? Math.round(Math.max(0, Math.min(1, prog)) * 100) : null;
+            if (p !== null) setOcrProgress(p);
+            if (msg.progress.status) setOcrStatus(String(msg.progress.status));
+          }
+        };
+
+        const messagePromise = new Promise<{ text?: string; error?: string; }>((resolve) => {
+          const handler = (ev: MessageEvent) => {
+            const msg = ev.data || {};
+            if (msg.type === 'result' && msg.text) {
+              worker.removeEventListener('message', handler as any);
+              resolve({ text: msg.text });
+            }
+            if (msg.type === 'error') {
+              worker.removeEventListener('message', handler as any);
+              resolve({ error: String(msg.error || 'OCR error') });
+            }
+          };
+          worker.addEventListener('message', handler as any);
+        });
+
+        const cancelPromise = new Promise<{ canceled: true }>((resolve) => {
+          const interval = setInterval(() => {
+            if (cancelledRef.current) {
+              clearInterval(interval);
+              resolve({ canceled: true });
+            }
+          }, 150);
+        });
+
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        worker.postMessage({ id: Math.random().toString(36).slice(2), dataUrl });
+
+        const raced = await Promise.race([messagePromise, cancelPromise]);
+
+        if ((raced as any).canceled) {
+          // Cancelled by user
+          try { worker.terminate(); } catch (e) { /* ignore */ }
+          workerRef.current = null;
+          setIsScanning(false);
+          setOcrProgress(null);
+          setOcrStatus(null);
+          return;
+        }
+
+        const res = raced as { text?: string; error?: string };
+        if (res.text) {
+          const text: string = res.text;
+          const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+          const descriptionGuess = lines[0] || '';
+          let amountGuess: number | undefined;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const m = lines[i].match(/(\d{1,3}(?:[,\d]*)(?:[.,]\d{1,2})?)/);
+            if (m) {
+              const cleaned = m[1].replace(/,/g, '');
+              const n = Number(cleaned.replace(',', ''));
+              if (!Number.isNaN(n)) { amountGuess = n; break; }
+            }
+          }
+
+          setScannedPreview({ description: descriptionGuess, amount: amountGuess, category: undefined });
+          setShowReviewModal(true);
+          setOcrProgress(null);
+          setOcrStatus(null);
+          try { worker.terminate(); } catch (e) { /* ignore */ }
+          workerRef.current = null;
+          setIsScanning(false);
+          return;
+        }
+
+        // Worker failed or returned error; terminate and fallback to server
+        try { worker.terminate(); } catch (e) { /* ignore */ }
+        workerRef.current = null;
+      }
+
+      // If we reach here, client OCR did not produce results — call server scan as fallback
       const result = (await scanReceipt(base64, mimeType)) as unknown as ScanResponse;
 
-      if (result.success && result.data) {
-        setView('form');
-        setDescription(result.data.description || '');
-        setAmount(String(result.data.amount || ''));
-        setCategory(result.data.category || '');
-        addToast('AI successfully read your receipt!', 'success');
-      } else {
-        throw new Error(result.error || 'Scan failed');
+      if (cancelledRef.current) {
+        // user cancelled while server request was in-flight
+        setIsScanning(false);
+        return;
       }
+
+      if (result.success && result.data) {
+        setScannedPreview(result.data);
+        setShowReviewModal(true);
+        setIsScanning(false);
+        return;
+      }
+
+      throw new Error(result.error || 'Scan failed');
     } catch (err: any) {
       addToast(err.message || 'AI Busy. Please fill details manually.', 'warning');
       setView('form');
@@ -98,6 +218,23 @@ const AddRecord = () => {
       setIsScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const confirmScannedData = (data: ScanData) => {
+    setDescription(data.description || '');
+    setAmount(String(data.amount || ''));
+    setCategory(data.category || '');
+    addToast('Parsed receipt applied — please verify and save.', 'info');
+    setShowReviewModal(false);
+    setScannedPreview(null);
+    setView('form');
+  };
+
+  const cancelScannedData = () => {
+    setShowReviewModal(false);
+    setScannedPreview(null);
+    setView('form');
+    addToast('You can fill details manually.', 'info');
   };
 
   const handleAISuggestCategory = async () => {
@@ -130,25 +267,18 @@ const AddRecord = () => {
 
     try {
       const result = await addExpenseRecord(formData);
-
       if (result.error) {
         addToast(`Error: ${result.error}`, 'error');
       } else {
-        // 1. Show Main Success Toast
         addToast('Expense added successfully!', 'success');
-
-        // 2. Handle AI/Budget Alerts via Toasts
         const maybeAlerts = (result.alerts || []) as BudgetAlert[];
         maybeAlerts.forEach(a => {
-          // Explicitly mapping 'info' | 'warning' | 'success' to our toast types
           addToast(a.message, a.type as 'info' | 'warning' | 'success');
         });
 
-        // 3. Reset UI
         setAmount(''); setCategory(''); setDescription(''); setDate(getTodayDate());
         setTimeout(() => setView('select'), 500);
 
-        // 4. Refresh Data
         window.dispatchEvent(new CustomEvent('records:changed'));
         window.dispatchEvent(new CustomEvent('budget:changed'));
         if (maybeAlerts.length > 0) window.dispatchEvent(new CustomEvent('notifications:changed'));
@@ -164,9 +294,35 @@ const AddRecord = () => {
     if (!isScanning || !mounted) return null;
     return createPortal(
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300">
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-[1.5rem] shadow-2xl flex flex-col items-center gap-4 border border-gray-100 dark:border-gray-700 max-w-sm w-full">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="font-black text-gray-900 dark:text-white uppercase tracking-tighter">AI Vision Scanning...</p>
+          {ocrStatus && <p className="text-sm text-gray-500 mt-2">{ocrStatus}</p>}
+          {ocrProgress !== null && (
+            <div className="w-full mt-4">
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className="h-2 bg-indigo-600" style={{ width: `${ocrProgress}%` }} />
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">{ocrProgress}%</p>
+            </div>
+          )}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => {
+                if (workerRef.current) {
+                  try { workerRef.current.terminate(); } catch (e) { /* ignore */ }
+                  workerRef.current = null;
+                }
+                setIsScanning(false);
+                setOcrProgress(null);
+                setOcrStatus(null);
+                addToast('OCR cancelled', 'info');
+              }}
+              className="px-3 py-2 rounded-xl bg-gray-100"
+            >
+              Cancel OCR
+            </button>
+          </div>
         </div>
       </div>,
       document.body
@@ -277,6 +433,69 @@ const AddRecord = () => {
           </form>
         </div>
       )}
+
+      {/* Review Modal for OCR/AI parsed receipt */}
+      {showReviewModal && scannedPreview && (
+        <ReviewModal 
+          data={scannedPreview} 
+          onCancel={cancelScannedData} 
+          onConfirm={confirmScannedData}
+          onUpdate={setScannedPreview}
+        />
+      )}
+    </div>
+  );
+};
+
+// Sub-component to isolate the 'null' check logic and keep code clean
+const ReviewModal = ({ 
+  data, 
+  onCancel, 
+  onConfirm,
+  onUpdate 
+}: { 
+  data: ScanData; 
+  onCancel: () => void; 
+  onConfirm: (d: ScanData) => void;
+  onUpdate: React.Dispatch<React.SetStateAction<ScanData | null>>;
+}) => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-100 dark:border-gray-800">
+        <h4 className="text-lg font-black mb-3">Review Parsed Receipt</h4>
+        <p className="text-sm text-gray-500 mb-4">The AI/OCR parsed these fields — please verify before saving.</p>
+
+        <div className="space-y-3 mb-4">
+          <label className="block text-xs font-bold uppercase text-gray-500">Description</label>
+          <input 
+            className="w-full px-3 py-2 rounded-xl border" 
+            defaultValue={data.description || ''} 
+            onChange={(e) => onUpdate(prev => prev ? { ...prev, description: e.target.value } : prev)} 
+          />
+
+          <label className="block text-xs font-bold uppercase text-gray-500">Amount</label>
+          <input 
+            type="number" 
+            step="any" 
+            className="w-full px-3 py-2 rounded-xl border" 
+            defaultValue={data.amount ?? ''} 
+            onChange={(e) => onUpdate(prev => prev ? { ...prev, amount: e.target.value ? Number(e.target.value) : undefined } : prev)} 
+          />
+
+          <label className="block text-xs font-bold uppercase text-gray-500">Category</label>
+          <input 
+            className="w-full px-3 py-2 rounded-xl border" 
+            defaultValue={data.category || ''} 
+            onChange={(e) => onUpdate(prev => prev ? { ...prev, category: e.target.value } : prev)} 
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100">Cancel</button>
+          <button onClick={() => onConfirm(data)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white">Apply</button>
+        </div>
+      </div>
     </div>
   );
 };

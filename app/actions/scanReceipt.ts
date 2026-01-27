@@ -26,14 +26,18 @@ export async function scanReceipt(base64Image: string, mimeType: string) {
       }
 
       // If we reach here, it's a real error or we ran out of retries
+      console.error('Scan attempt failed:', error);
+
+      // If AI fails, return a structured error so the client can attempt local OCR
       console.error('Final Scan Error:', error);
       return {
         success: false,
         data: null,
-        error: isRateLimit 
-          ? "AI servers are crowded. Try again in a moment." 
+        error: isRateLimit
+          ? 'AI servers are crowded. Try again in a moment.'
           : (error.message || 'AI Processing Error'),
-      };
+        clientOCR: true,
+      } as any;
     }
   }
   
