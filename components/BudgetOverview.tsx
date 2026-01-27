@@ -2,6 +2,17 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import BudgetSettings from "./BudgetSettings";
+import { 
+  Download, 
+  Settings2, 
+  Calendar, 
+  Wallet, 
+  Activity, 
+  Timer, 
+  ArrowUpRight,
+  ChevronRight,
+  X
+} from "lucide-react";
 
 type PerCat = { category: string; allocated: number; spent: number };
 
@@ -16,11 +27,7 @@ interface BudgetData {
   perCategory: PerCat[];
 }
 
-interface BudgetOverviewProps {
-  month?: string;
-}
-
-export default function BudgetOverview({ month }: BudgetOverviewProps) {
+export default function BudgetOverview({ month }: { month?: string }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<BudgetData | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -31,20 +38,18 @@ export default function BudgetOverview({ month }: BudgetOverviewProps) {
     try {
       const q = month ? `?month=${encodeURIComponent(month)}` : "";
       const res = await fetch(`/api/budget/status${q}`);
-      if (!res.ok) throw new Error("Failed to fetch budget status");
-      const json = await res.json();
-      setData(json);
-    } catch (error) {
-      console.error("Failed to fetch budget status", error);
+      if (!res.ok) throw new Error("Fetch failed");
+      setData(await res.json());
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   }, [month]);
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+  useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
+  // Global Event Listeners
   useEffect(() => {
     const handler = () => fetchStatus();
     window.addEventListener("records:changed", handler);
@@ -55,156 +60,133 @@ export default function BudgetOverview({ month }: BudgetOverviewProps) {
     };
   }, [fetchStatus]);
 
-  // Modal focus trap & Escape key
-  useEffect(() => {
-    if (!showModal || !modalRef.current) return;
-    const node = modalRef.current;
-    const focusable = node.querySelectorAll<HTMLElement>("a, button, input, select, textarea, [tabindex]:not([tabindex='-1'])");
-    if (focusable.length) focusable[0].focus();
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowModal(false);
-    };
-
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [showModal]);
-
   const handleExportCSV = async () => {
     try {
       const q = month ? `?month=${encodeURIComponent(month)}` : "";
       const res = await fetch(`/api/budget/export${q}`);
-      if (!res.ok) throw new Error("Export failed");
-      
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      // Clean filename logic
-      const fileName = `SmartJuanPeso-Budget-${month || new Date().toISOString().slice(0, 7)}.csv`;
-      a.download = fileName;
-      document.body.appendChild(a);
+      a.download = `SJP-Analytics-${month || 'current'}.csv`;
       a.click();
-      a.remove();
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Export failed", error);
-      alert("Failed to generate CSV export. Please try again.");
-    }
+    } catch (e) { alert("Export failed."); }
   };
 
   if (loading) return (
-    <div className="p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse text-center">
-      <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">Loading budget data...</p>
+    <div className="p-12 bg-white dark:bg-slate-950 rounded-[2rem] border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center space-y-4">
+      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Syncing Neural Data...</p>
     </div>
   );
 
-  if (!data) return (
-    <div className="p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
-      <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">No budget data found</p>
-    </div>
-  );
+  if (!data) return null;
 
-  const budget = data.budget;
   const percent = data.percentUsed ?? 0;
-  const pctText = `${Math.round(percent * 100)}%`;
+  const isOver = percent > 0.9;
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-      {/* Header & Primary Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tighter">Monthly Budget</h3>
-          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-            {(() => {
-              if (!data.monthStart) return "No Date";
-              const dateStr = data.monthStart.length === 7 ? `${data.monthStart}-01` : data.monthStart;
-              const date = new Date(dateStr);
-              return isNaN(date.getTime()) ? "Select Month" : date.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-            })()}
-          </p>
+    <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 overflow-hidden">
+      
+      {/* 1. Header Section */}
+      <div className="p-8 pb-0 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black tracking-tighter uppercase dark:text-white">Budget Protocol</h3>
+            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
+              {data.monthStart ? new Date(data.monthStart + "-01").toLocaleString('default', { month: 'long', year: 'numeric' }) : "System Idle"}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-700 transition-all"
-          >
-            <span>📥</span> Export CSV
+          <button onClick={handleExportCSV} className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-indigo-500 rounded-xl transition-colors border border-slate-100 dark:border-slate-700">
+            <Download size={18} />
           </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all"
-          >
-            Manage
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+            <Settings2 size={14} /> Configure
           </button>
         </div>
       </div>
 
-      {/* Main Stats Card */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Budget</p>
-          <p className="text-xl font-black text-gray-900 dark:text-white">
-            {budget ? `₱${Number(budget.monthlyTotal).toLocaleString()}` : "₱0.00"}
-          </p>
-        </div>
-        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Spent</p>
-          <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">
-            ₱{Number(data.totalSpent).toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between items-end mb-2">
-          <span className="text-[10px] font-black text-gray-400 uppercase">Usage Progress</span>
-          <span className={`text-sm font-black ${percent > 0.9 ? 'text-red-500' : 'text-indigo-600'}`}>{pctText}</span>
-        </div>
-        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden border-4 border-gray-50 dark:border-gray-800">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${percent > 0.9 ? 'bg-red-500' : 'bg-gradient-to-r from-indigo-500 to-teal-400'}`}
-            style={{ width: `${Math.min(percent * 100, 100)}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-3 gap-2 py-4 border-t border-gray-100 dark:border-gray-700">
-        <div className="text-center">
-          <p className="text-[9px] font-black text-gray-400 uppercase">Remaining</p>
-          <p className="text-xs font-bold text-gray-900 dark:text-white">₱{data.remaining.toFixed(0)}</p>
-        </div>
-        <div className="text-center border-x border-gray-100 dark:border-gray-700">
-          <p className="text-[9px] font-black text-gray-400 uppercase">Daily Avg</p>
-          <p className="text-xs font-bold text-gray-900 dark:text-white">₱{data.dailyAverage.toFixed(0)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-[9px] font-black text-gray-400 uppercase">Days Left</p>
-          <p className="text-xs font-bold text-gray-900 dark:text-white">{data.daysLeft}</p>
-        </div>
-      </div>
-
-      {/* Category Breakdown */}
-      {Array.isArray(data.perCategory) && data.perCategory.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Category Breakdown</h4>
+      {/* 2. Primary Metrics Hub */}
+      <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Expenditure Progress Ring-style UI */}
+        <div className="md:col-span-2 p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Current Utilization</p>
+              <h4 className={`text-4xl font-black tracking-tighter ${isOver ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>
+                {Math.round(percent * 100)}%
+              </h4>
+            </div>
+            <div className={`p-2 rounded-lg ${isOver ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+              <Activity size={20} />
+            </div>
+          </div>
+          
           <div className="space-y-4">
+            <div className="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ease-out ${isOver ? 'bg-red-500' : 'bg-indigo-500'}`}
+                style={{ width: `${Math.min(percent * 100, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <span>Spent: ₱{data.totalSpent.toLocaleString()}</span>
+              <span>Limit: ₱{data.budget?.monthlyTotal.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 gap-4">
+          {[
+            { label: 'Liquidity Left', val: `₱${data.remaining.toLocaleString()}`, icon: <Wallet size={14}/>, color: 'text-emerald-500' },
+            { label: 'Burn Rate / Day', val: `₱${data.dailyAverage.toFixed(0)}`, icon: <ArrowUpRight size={14}/>, color: 'text-indigo-500' },
+            { label: 'Cycle Days Left', val: data.daysLeft, icon: <Timer size={14}/>, color: 'text-amber-500' }
+          ].map((stat, i) => (
+            <div key={i} className="p-4 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{stat.label}</p>
+                <p className="font-bold text-slate-900 dark:text-white">{stat.val}</p>
+              </div>
+              <div className={`${stat.color} opacity-80`}>{stat.icon}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. Neural Category Matrix */}
+      {data.perCategory.length > 0 && (
+        <div className="px-8 pb-10">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Category Matrix</span>
+            <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.perCategory.map((c) => {
               const used = c.allocated > 0 ? Math.min(1, c.spent / c.allocated) : 0;
               return (
-                <div key={c.category}>
-                  <div className="flex justify-between text-[11px] font-bold mb-1.5">
-                    <span className="text-gray-700 dark:text-gray-300">{c.category}</span>
-                    <span className="text-gray-400">
-                      ₱{c.spent.toFixed(0)} <span className="text-[9px] opacity-50">/ ₱{c.allocated.toFixed(0)}</span>
-                    </span>
+                <div key={c.category} className="group p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-transparent hover:border-indigo-500/30 transition-all">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">{c.category}</span>
+                    <ChevronRight size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
                   </div>
-                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-slate-500">₱{c.spent.toLocaleString()}</span>
+                    <span className="text-[9px] font-black text-slate-400">Target: ₱{c.allocated.toLocaleString()}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full ${used > 0.9 ? 'bg-red-400' : 'bg-indigo-400'}`} 
+                      className={`h-full transition-all duration-700 ${used > 0.9 ? 'bg-red-400' : 'bg-indigo-500'}`} 
                       style={{ width: `${used * 100}%` }} 
                     />
                   </div>
@@ -215,25 +197,18 @@ export default function BudgetOverview({ month }: BudgetOverviewProps) {
         </div>
       )}
 
-      {/* Modal for Budget Settings */}
+      {/* 4. Configuration Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in zoom-in-95" ref={modalRef} role="dialog">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Configure Budget</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-2 transition-colors">
-                ✕
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 animate-in fade-in">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-3xl overflow-hidden" ref={modalRef}>
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+              <h3 className="text-xl font-black uppercase tracking-tighter italic">System Config</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <X size={20} />
               </button>
             </div>
-            <div className="p-6 max-h-[80vh] overflow-y-auto">
-              <BudgetSettings
-                initial={{ month: month }}
-                onClose={() => {
-                  setShowModal(false);
-                  fetchStatus(); // Refresh data after closing
-                }}
-              />
+            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <BudgetSettings initial={{ month }} onClose={() => { setShowModal(false); fetchStatus(); }} />
             </div>
           </div>
         </div>

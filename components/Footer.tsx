@@ -1,123 +1,126 @@
 'use client';
+
 import Link from 'next/link';
 import { SignedIn, SignedOut, useUser } from '@clerk/nextjs';
+import { 
+  Cpu, 
+  ShieldCheck, 
+  BarChart3, 
+  Zap, 
+  Globe, 
+  Github, 
+  Twitter,
+  ChevronRight
+} from 'lucide-react';
 
 const Footer = () => {
-  // We use useUser to check status for the dynamic Home/Dashboard label
   const { isSignedIn } = useUser();
 
   return (
-    <footer className='relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/20 border-t border-gray-100/50 dark:border-gray-700/50'>
-      {/* Gradient accent line */}
-      <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-teal-500'></div>
+    <footer className='relative bg-white dark:bg-[#020617] border-t border-slate-200 dark:border-slate-800 transition-colors duration-500'>
+      {/* Neural Accent Line */}
+      <div className='absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50' />
 
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mb-8'>
+      <div className='max-w-7xl mx-auto px-6 py-16'>
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16'>
           
-          {/* Logo and Tagline */}
-          <div className='text-center md:text-left'>
-            <div className='inline-flex items-center gap-2 mb-4'>
-              <div className='w-8 h-8 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg'>
-                <span className='text-white text-lg'>₱</span>
+          {/* 1. Brand Identity */}
+          <div className='lg:col-span-5 space-y-6 text-center lg:text-left'>
+            <div className='inline-flex items-center gap-3'>
+              <div className='w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20'>
+                <Cpu className='text-white' size={20} />
               </div>
-              <h2 className='text-xl font-bold bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 bg-clip-text text-transparent'>
-                SmartJuanPeso AI
+              <h2 className='text-2xl font-black tracking-tighter uppercase text-slate-900 dark:text-white'>
+                SmartJuanPeso <span className='text-indigo-600 dark:text-indigo-500'>AI</span>
               </h2>
             </div>
-            <p className='text-gray-600 dark:text-gray-400 leading-relaxed max-w-sm'>
-              Intelligent financial management powered by AI. Track your
-              expenses, manage your budget, and gain insights into your spending
-              patterns.
+            <p className='text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-md mx-auto lg:mx-0'>
+              The next-generation financial operating system. Leveraging neural spending analysis 
+              to automate wealth management and eliminate manual tracking overhead.
             </p>
+            <div className='flex items-center justify-center lg:justify-start gap-4'>
+              <div className='p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer'>
+                <Twitter size={18} />
+              </div>
+              <div className='p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer'>
+                <Github size={18} />
+              </div>
+            </div>
           </div>
 
-          {/* Navigation Links */}
-          <div className='text-center md:text-left'>
-            <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
-              Quick Links
+          {/* 2. Navigation Matrix */}
+          <div className='lg:col-span-3 text-center lg:text-left'>
+            <h3 className='text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-6'>
+              System Nodes
             </h3>
-            <div className='flex flex-col space-y-3'>
-              {/* Always visible, but label changes */}
+            <div className='flex flex-col space-y-4'>
               <Link
-                href='/'
-                className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
+                href={isSignedIn ? '/dashboard' : '/'}
+                className='group flex items-center justify-center lg:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors'
               >
-                <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                {isSignedIn ? 'Dashboard' : 'Home'}
+                {isSignedIn ? 'Neural Dashboard' : 'Central Hub'}
+                <ChevronRight size={12} className='opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all' />
               </Link>
 
               <SignedIn>
-                <Link
-                  href='/budget'
-                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
-                >
-                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  Planner
+                <Link href='/budget' className='group flex items-center justify-center lg:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors'>
+                  Logic Planner
+                  <ChevronRight size={12} className='opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all' />
                 </Link>
               </SignedIn>
 
               <SignedOut>
-                <Link
-                  href='/about'
-                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
-                >
-                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  Features
+                <Link href='/about' className='group flex items-center justify-center lg:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors'>
+                  Architecture
+                  <ChevronRight size={12} className='opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all' />
                 </Link>
-                <Link
-                  href='/contact'
-                  className='group inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm font-medium transition-colors duration-200'
-                >
-                  <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></span>
-                  Support
+                <Link href='/contact' className='group flex items-center justify-center lg:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition-colors'>
+                  Support Desk
+                  <ChevronRight size={12} className='opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all' />
                 </Link>
               </SignedOut>
             </div>
           </div>
 
-          {/* Features / Value Prop */}
-          <div className='text-center md:text-left'>
-            <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4'>
-              Why SmartJuanPeso?
+          {/* 3. Tech Stack Props */}
+          <div className='lg:col-span-4 text-center lg:text-left'>
+            <h3 className='text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-6'>
+              Core Protocol
             </h3>
-            <div className='space-y-3'>
-              <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
-                <div className='w-5 h-5 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-[10px]'>🤖</span>
+            <div className='grid grid-cols-1 gap-3'>
+              {[
+                { icon: <Zap size={14} />, label: 'Ultra-Low Latency' },
+                { icon: <ShieldCheck size={14} />, label: 'E2E Asset Privacy' },
+                { icon: <BarChart3 size={14} />, label: 'Real-time Analytics' }
+              ].map((item, i) => (
+                <div key={i} className='flex items-center justify-center lg:justify-start gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/50 text-slate-500 dark:text-slate-400'>
+                  <span className='text-indigo-500'>{item.icon}</span>
+                  <span className='text-[10px] font-black uppercase tracking-widest'>{item.label}</span>
                 </div>
-                AI-Powered Insights
-              </div>
-              <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
-                <div className='w-5 h-5 bg-gradient-to-br from-blue-500 to-teal-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-[10px]'>✨</span>
-                </div>
-                Smart Categorization
-              </div>
-              <div className='flex items-center gap-3 text-gray-600 dark:text-gray-400 text-sm'>
-                <div className='w-5 h-5 bg-gradient-to-br from-teal-500 to-indigo-500 rounded-md flex items-center justify-center shadow-sm'>
-                  <span className='text-white text-[10px]'>📈</span>
-                </div>
-                Real-time Analytics
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className='w-full h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-8'></div>
-
-        {/* Copyright and Social */}
-        <div className='flex flex-col md:flex-row justify-between items-center gap-4'>
-          <div className='text-center md:text-left'>
-            <p className='text-gray-500 dark:text-gray-400 text-xs'>
-              © {new Date().getFullYear()} SmartJuanPeso AI. Built for financial freedom.
+        {/* Bottom Bar */}
+        <div className='pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6'>
+          <div className='flex items-center gap-4 order-2 md:order-1'>
+            <p className='text-[10px] font-black uppercase tracking-widest text-slate-400'>
+              © {new Date().getFullYear()} SJP_AI INTERFACE
             </p>
+            <div className='h-3 w-[1px] bg-slate-200 dark:bg-slate-800' />
+            <div className='flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-indigo-500'>
+              <Globe size={10} />
+              <span>Nodes: Manila / Global</span>
+            </div>
           </div>
 
-          <div className='flex items-center gap-4'>
-            <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs font-medium'>
-              <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse'></span>
-              Made by JMS
+          <div className='order-1 md:order-2'>
+            <div className='px-4 py-2 bg-slate-900 dark:bg-indigo-600 rounded-xl flex items-center gap-3 shadow-xl'>
+              <div className='w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]' />
+              <span className='text-[10px] font-black uppercase tracking-widest text-white'>
+                System Made by JMS
+              </span>
             </div>
           </div>
         </div>

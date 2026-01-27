@@ -1,232 +1,132 @@
 'use client';
 
+import { Mail, Phone, MapPin, Clock, HelpCircle, Send, Sparkles, Fingerprint, ShieldCheck } from 'lucide-react';
+
 const ContactPage = () => {
   return (
-    <div className='font-sans bg-gradient-to-br from-gray-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/20 text-gray-800 dark:text-gray-200 transition-all duration-300 min-h-screen'>
-      {/* Hero Section */}
-      <section className='relative overflow-hidden flex flex-col items-center justify-center text-center py-16 sm:py-20 md:py-24 px-4 sm:px-6 md:px-8 bg-gradient-to-br from-indigo-500/10 via-blue-500/5 to-teal-500/10 dark:from-indigo-900/30 dark:via-blue-900/20 dark:to-teal-900/30'>
-        <div className='absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10'></div>
-        <div className='relative z-10 max-w-4xl mx-auto w-full'>
-          <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6 shadow-lg'>
-            <span className='w-1.5 h-1.5 sm:w-2 sm:h-2 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-pulse'></span>
-            Get in Touch
+    <div className='min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 transition-colors duration-500'>
+      
+      {/* 1. HERO SECTION */}
+      <section className='relative pt-20 pb-16 px-4 overflow-hidden'>
+        <div className='absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent opacity-50' />
+        
+        <div className='relative z-10 max-w-5xl mx-auto text-center'>
+          <div className='inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm mb-8'>
+            <Sparkles className='text-indigo-500' size={16} />
+            <span className='text-[10px] font-black uppercase tracking-[0.2em] text-slate-500'>Support Interface</span>
           </div>
-          <h1 className='text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100 leading-tight'>
-            Contact{' '}
-            <span className='bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 bg-clip-text text-transparent'>
-              SmartJuanPeso AI
-            </span>
+          
+          <h1 className='text-4xl md:text-7xl font-black tracking-tighter uppercase mb-6 leading-none'>
+            Connect with <br />
+            <span className='text-indigo-600 dark:text-indigo-500'>Neural Support</span>
           </h1>
-          <p className='text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed px-2 sm:px-0'>
-            Have questions about AI-powered expense tracking or need help?
-            We&#39;re here to assist you with intelligent financial management.
+          
+          <p className='text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed'>
+            Access our specialized support channels for AI-powered expense tracking and intelligent financial management.
           </p>
-          <div className='mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2 sm:px-0'>
-            <a
-              href='mailto:support@expensetracker-ai.com'
-              className='group relative overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-500 to-teal-500 hover:from-indigo-700 hover:via-blue-600 hover:to-teal-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold shadow-2xl hover:shadow-3xl transition-all duration-200 transform hover:-translate-y-0.5'
-            >
-              <span className='relative z-10 flex items-center justify-center gap-2'>
-                Send us an Email
-                <span className='text-lg'>✉️</span>
-              </span>
-              <div className='absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
+        </div>
+      </section>
+
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-24'>
+        
+        {/* 2. CORE CONTACT CHANNELS (Grid) */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
+          
+          {/* Email Card */}
+          <div className='group relative bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200/60 dark:border-slate-800/60 shadow-xl shadow-slate-200/10 transition-transform hover:-translate-y-2'>
+            <div className='w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-indigo-500/20'>
+              <Mail size={24} />
+            </div>
+            <h3 className='text-xl font-black uppercase tracking-tighter mb-2'>Digital Mail</h3>
+            <p className='text-sm text-slate-500 dark:text-slate-400 mb-6'>Direct access to our technical support desk with 24h response time.</p>
+            <a href='mailto:support@smartjuanpeso.ai' className='text-indigo-600 dark:text-indigo-400 font-bold hover:underline decoration-2 underline-offset-4'>
+              support@smartjuanpeso.ai
             </a>
-            <a
-              href='tel:+63951-151-8567'
-              className='group border-2 border-indigo-500/20 dark:border-indigo-400/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-200 backdrop-blur-sm flex items-center justify-center gap-2'
-            >
-              Call Us
-              <span className='text-lg'>📞</span>
+          </div>
+
+          {/* Phone Card */}
+          <div className='group relative bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200/60 dark:border-slate-800/60 shadow-xl shadow-slate-200/10 transition-transform hover:-translate-y-2'>
+            <div className='w-12 h-12 bg-slate-900 dark:bg-indigo-500 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-indigo-500/20'>
+              <Phone size={24} />
+            </div>
+            <h3 className='text-xl font-black uppercase tracking-tighter mb-2'>Voice Link</h3>
+            <p className='text-sm text-slate-500 dark:text-slate-400 mb-6'>Urgent financial logic assistance and account recovery hotline.</p>
+            <a href='tel:+639511518567' className='text-slate-900 dark:text-white font-bold'>
+              +63 (951) 151-8567
             </a>
           </div>
-        </div>
-      </section>
 
-      {/* Contact Information Section */}
-      <section className='py-12 sm:py-16 md:py-20 px-4 sm:px-6 md:px-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm relative overflow-hidden'>
-        <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-teal-500'></div>
-        <div className='max-w-6xl mx-auto'>
-          <div className='text-center mb-10 sm:mb-12 md:mb-16'>
-            <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6'>
-              <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full'></span>
-              Contact Information
+          {/* Location Card */}
+          <div className='group relative bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200/60 dark:border-slate-800/60 shadow-xl shadow-slate-200/10 transition-transform hover:-translate-y-2'>
+            <div className='w-12 h-12 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl flex items-center justify-center text-indigo-600 mb-6'>
+              <MapPin size={24} />
             </div>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100 px-2 sm:px-0'>
-              Multiple Ways to{' '}
-              <span className='text-indigo-600 dark:text-indigo-400'>
-                Connect
-              </span>
-            </h2>
-            <p className='text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-2 sm:px-0'>
-              Choose the most convenient way to reach out to our ExpenseTracker
-              AI support team.
-            </p>
-          </div>
-
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8'>
-            <div className='group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-xl sm:rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl transition-all duration-200 hover:-translate-y-1 text-center'>
-              <div className='absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-blue-500/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-              <div className='relative z-10'>
-                <div className='w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg mb-4 sm:mb-6 mx-auto'>
-                  <span className='text-white text-lg sm:text-xl'>✉️</span>
-                </div>
-                <h3 className='text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100'>
-                  Email Support
-                </h3>
-                <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 leading-relaxed'>
-                  Get detailed assistance with your questions. We typically
-                  respond within 24 hours.
-                </p>
-                <a
-                  href='mailto:support@expensetracker-ai.com'
-                  className='inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 text-sm sm:text-base break-all sm:break-normal'
-                >
-                  <span className='hidden sm:inline'>
-                    support@expensetracker-ai.com
-                  </span>
-                  <span className='sm:hidden'>Email Us</span>
-                  <span className='text-sm'>→</span>
-                </a>
-              </div>
-            </div>
-
-            <div className='group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-xl sm:rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl transition-all duration-200 hover:-translate-y-1 text-center'>
-              <div className='absolute inset-0 bg-gradient-to-br from-blue-500/5 to-teal-500/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-              <div className='relative z-10'>
-                <div className='w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 via-teal-500 to-indigo-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg mb-4 sm:mb-6 mx-auto'>
-                  <span className='text-white text-lg sm:text-xl'>📞</span>
-                </div>
-                <h3 className='text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100'>
-                  Phone Support
-                </h3>
-                <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 leading-relaxed'>
-                  Speak directly with our support team for immediate assistance
-                  with urgent matters.
-                </p>
-                <a
-                  href='tel:+63951-151-8567'
-                  className='inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200 text-sm sm:text-base'
-                >
-                  +63 (951) 151-8567
-                  <span className='text-sm'>→</span>
-                </a>
-              </div>
-            </div>
-
-            <div className='group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 sm:p-8 rounded-xl sm:rounded-2xl shadow-xl border border-gray-100/50 dark:border-gray-700/50 hover:shadow-2xl transition-all duration-200 hover:-translate-y-1 text-center sm:col-span-2 lg:col-span-1'>
-              <div className='absolute inset-0 bg-gradient-to-br from-teal-500/5 to-indigo-500/5 rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
-              <div className='relative z-10'>
-                <div className='w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 via-indigo-500 to-blue-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg mb-4 sm:mb-6 mx-auto'>
-                  <span className='text-white text-lg sm:text-xl'>📍</span>
-                </div>
-                <h3 className='text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100'>
-                  Office Location
-                </h3>
-                <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 leading-relaxed'>
-                  Visit our headquarters for in-person consultations and
-                  partnership discussions.
-                </p>
-                <div className='text-indigo-600 dark:text-indigo-400 font-medium text-sm sm:text-base'>
-                  143 AI Innovation 
-                  <br />
-                  Tech Solution City, PH
-                </div>
-              </div>
-            </div>
+            <h3 className='text-xl font-black uppercase tracking-tighter mb-2'>Headquarters</h3>
+            <p className='text-sm text-slate-500 dark:text-slate-400 mb-6'>Innovation Hub 143, <br />AI District, Tech City, PH.</p>
+            <span className='text-[10px] font-black uppercase tracking-widest text-slate-400'>Physical Node Active</span>
           </div>
         </div>
-      </section>
 
-      {/* Support Hours & FAQ Section */}
-      <section className='py-12 sm:py-16 md:py-20 px-4 sm:px-6 md:px-8 bg-gradient-to-br from-gray-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900/20'>
-        <div className='max-w-4xl mx-auto'>
-          <div className='text-center mb-10 sm:mb-12 md:mb-16'>
-            <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6'>
-              <span className='w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full'></span>
-              Support Information
+        {/* 3. SUPPORT OPERATIONS & FAQ */}
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-8'>
+          
+          {/* Support Hours */}
+          <div className='lg:col-span-5 bg-slate-900 dark:bg-indigo-600 rounded-[3.5rem] p-10 text-white relative overflow-hidden'>
+            <div className='absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20' />
+            <div className='relative z-10'>
+              <div className='flex items-center gap-3 mb-8'>
+                <Clock className='text-indigo-300' size={24} />
+                <h3 className='text-2xl font-black uppercase tracking-tighter'>Operation Clock</h3>
+              </div>
+              <div className='space-y-4'>
+                <div className='flex justify-between border-b border-white/10 pb-2'>
+                  <span className='text-indigo-100/60 uppercase text-xs font-bold'>Mon — Fri</span>
+                  <span className='font-mono'>09:00 - 18:00</span>
+                </div>
+                <div className='flex justify-between border-b border-white/10 pb-2'>
+                  <span className='text-indigo-100/60 uppercase text-xs font-bold'>Saturday</span>
+                  <span className='font-mono'>10:00 - 16:00</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-indigo-100/60 uppercase text-xs font-bold'>Sunday</span>
+                  <span className='text-indigo-300 font-bold'>ENCRYPTED (OFF)</span>
+                </div>
+              </div>
+              <div className='mt-10 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10'>
+                <div className='flex items-center gap-2 mb-1'>
+                  <ShieldCheck size={14} className='text-indigo-300' />
+                  <span className='text-[10px] font-black uppercase tracking-widest'>Security Protocol</span>
+                </div>
+                <p className='text-xs text-indigo-100/80'>All digital communications are end-to-end encrypted for financial privacy.</p>
+              </div>
             </div>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-gray-100 px-2 sm:px-0'>
-              We&#39;re Here to{' '}
-              <span className='text-indigo-600 dark:text-indigo-400'>
-                Help
-              </span>
-            </h2>
           </div>
 
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8'>
-            <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg border border-gray-100/50 dark:border-gray-700/50'>
-              <div className='flex items-center gap-3 mb-4'>
-                <div className='w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-indigo-500 via-blue-500 to-teal-500 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg'>
-                  <span className='text-white text-xs sm:text-sm'>🕒</span>
-                </div>
-                <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-                  Support Hours
-                </h3>
-              </div>
-              <div className='space-y-2 text-sm sm:text-base text-gray-600 dark:text-gray-400'>
-                <div className='flex justify-between'>
-                  <span>Monday - Friday:</span>
-                  <span className='font-medium'>9:00 AM - 6:00 PM PHST</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Saturday:</span>
-                  <span className='font-medium'>10:00 AM - 4:00 PM PHST</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Sunday:</span>
-                  <span className='font-medium'>Closed</span>
-                </div>
-                <div className='mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg'>
-                  <p className='text-xs sm:text-sm text-indigo-700 dark:text-indigo-300'>
-                    <strong>Email support:</strong> Available 24/7 with
-                    responses within 24 hours
-                  </p>
-                </div>
-              </div>
+          {/* Quick Help Items */}
+          <div className='lg:col-span-7 bg-white dark:bg-slate-900 rounded-[3.5rem] p-10 border border-slate-200 dark:border-slate-800 shadow-xl'>
+            <div className='flex items-center gap-3 mb-8'>
+              <HelpCircle className='text-indigo-500' size={24} />
+              <h3 className='text-2xl font-black uppercase tracking-tighter'>Neural Help Deck</h3>
             </div>
-
-            <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg border border-gray-100/50 dark:border-gray-700/50'>
-              <div className='flex items-center gap-3 mb-4'>
-                <div className='w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 via-teal-500 to-indigo-500 rounded-md sm:rounded-lg flex items-center justify-center shadow-lg'>
-                  <span className='text-white text-xs sm:text-sm'>❓</span>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+              {[
+                { title: 'Auth Issues', desc: 'Secure login & Clerk integration' },
+                { title: 'AI Accuracy', desc: 'Neural insight calibration' },
+                { title: 'Export Data', desc: 'CSV & Ledger processing' },
+                { title: 'API Access', desc: 'Secure endpoint documentation' },
+              ].map((item, i) => (
+                <div key={i} className='p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-indigo-500/30 transition-colors cursor-pointer group'>
+                  <h4 className='font-black uppercase text-xs tracking-tight mb-1 group-hover:text-indigo-500 transition-colors'>{item.title}</h4>
+                  <p className='text-xs text-slate-500'>{item.desc}</p>
                 </div>
-                <h3 className='text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100'>
-                  Quick Help
-                </h3>
-              </div>
-              <div className='space-y-3'>
-                <div className='p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
-                  <h4 className='font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm mb-1'>
-                    Technical Issues
-                  </h4>
-                  <p className='text-xs text-gray-600 dark:text-gray-400'>
-                    App not working properly? Check our troubleshooting guide
-                    first.
-                  </p>
-                </div>
-                <div className='p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
-                  <h4 className='font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm mb-1'>
-                    AI Features
-                  </h4>
-                  <p className='text-xs text-gray-600 dark:text-gray-400'>
-                    Questions about AI insights? Our AI documentation has
-                    answers.
-                  </p>
-                </div>
-                <div className='p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg'>
-                  <h4 className='font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm mb-1'>
-                    Account & Billing
-                  </h4>
-                  <p className='text-xs text-gray-600 dark:text-gray-400'>
-                    Account issues or billing questions? Contact us directly.
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
+            <button className='w-full mt-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-indigo-600 dark:hover:bg-indigo-500 dark:hover:text-white transition-all'>
+              Open Neural Ticket <Send size={14} />
+            </button>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 };
