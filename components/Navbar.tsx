@@ -86,7 +86,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
               <Image 
-                src="/logo/Logo.png" 
+                src="/logo/logo.png" 
                 alt="SmartJuanPeso AI Logo"
                 fill
                 className="object-contain"
