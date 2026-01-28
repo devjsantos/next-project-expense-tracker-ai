@@ -110,11 +110,10 @@ export default function Navbar() {
           {/* Desktop Nav - User Friendly Labels */}
           <div className="hidden md:flex items-center gap-1 bg-slate-100/50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
             <NavLink
-              href={isSignedIn ? "/dashboard" : "/"}
+              href="/dashboard" // Changed from {isSignedIn ? "/dashboard" : "/"}
               icon={<LayoutDashboard size={16} />}
               label={isSignedIn ? "Dashboard" : "Home"}
             />
-
             <SignedOut>
               <NavLink href="/about" icon={<Info size={16} />} label="How it Works" />
               <NavLink href="/contact" icon={<Mail size={16} />} label="Help" />
