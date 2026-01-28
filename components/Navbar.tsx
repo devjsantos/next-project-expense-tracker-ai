@@ -13,7 +13,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationCenter from '@/components/NotificationCenter';
 import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail, Cpu } from 'lucide-react';
-import AppLogo from '@/public/logo/logo.png';
+import AppLogo from '../public/logo/logo.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
