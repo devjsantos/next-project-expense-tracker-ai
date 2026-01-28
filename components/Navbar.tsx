@@ -8,12 +8,12 @@ import {
   useUser,
 } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationCenter from '@/components/NotificationCenter';
-import { Bell, LayoutDashboard, Wallet, Sparkles, Menu, X, Download } from 'lucide-react';
+import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail, Cpu } from 'lucide-react';
 
-/* ================== TYPES ================== */
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -38,7 +38,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /* ===== PWA INSTALL LOGIC ===== */
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
@@ -56,7 +55,6 @@ export default function Navbar() {
     if (outcome === 'accepted') setShowInstall(false);
   };
 
-  /* ===== NOTIFICATIONS LOGIC ===== */
   const fetchUnread = useCallback(async () => {
     if (!isSignedIn || document.hidden) return;
     try {
@@ -84,26 +82,42 @@ export default function Navbar() {
     <nav className="sticky top-0 z-[100] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-              <span className="text-white font-black text-xl">₱</span>
+        {/* Logo Section */}
+          <Link href="/" className="flex items-center gap-3 group shrink-0">
+            <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
+              <Image 
+                src="/logo/Logo.png" 
+                alt="SmartJuanPeso AI Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <span className="font-black text-lg tracking-tighter text-slate-900 dark:text-white hidden sm:block">
               SMART<span className="text-indigo-500">JUANPESO</span> AI
             </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-            <NavLink href="/" icon={<LayoutDashboard size={16} />} label="Board" />
+          {/* Desktop Nav - Centered Alignment */}
+          <div className="hidden md:flex items-center gap-1 bg-slate-100/50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+            <NavLink 
+              href={isSignedIn ? "/dashboard" : "/"} 
+              icon={<LayoutDashboard size={16} />} 
+              label={isSignedIn ? "Neural Dashboard" : "Central Hub"} 
+            />
+            
+            <SignedOut>
+              <NavLink href="/about" icon={<Info size={16} />} label="Architecture" />
+              <NavLink href="/contact" icon={<Mail size={16} />} label="Support Desk" />
+            </SignedOut>
+
             <SignedIn>
-              <NavLink href="/budget" icon={<Wallet size={16} />} label="Planner" />
+              <NavLink href="/budget" icon={<Wallet size={16} />} label="Logic Planner" />
             </SignedIn>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Actions Section */}
+          <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
             
             <SignedIn>
@@ -137,8 +151,8 @@ export default function Navbar() {
 
             <SignedOut>
               <SignInButton mode="modal">
-                <button className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-700 transition-all">
-                  Access
+                <button className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20">
+                  Initialize
                 </button>
               </SignInButton>
             </SignedOut>
@@ -159,14 +173,24 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-5">
-           <Link href="/" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold">
-            <LayoutDashboard size={18} /> Dashboard
-           </Link>
-           <SignedIn>
-            <Link href="/budget" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold">
-              <Wallet size={18} /> Planner
+            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+             <LayoutDashboard size={18} /> {isSignedIn ? "Neural Dashboard" : "Central Hub"}
             </Link>
-           </SignedIn>
+            
+            <SignedOut>
+              <Link href="/about" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                <Info size={18} /> Architecture
+              </Link>
+              <Link href="/contact" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+                <Mail size={18} /> Support Desk
+              </Link>
+            </SignedOut>
+
+            <SignedIn>
+             <Link href="/budget" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+               <Wallet size={18} /> Logic Planner
+             </Link>
+            </SignedIn>
         </div>
       )}
     </nav>
@@ -175,7 +199,7 @@ export default function Navbar() {
 
 function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
-    <Link href={href} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-600 transition-all">
+    <Link href={href} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
       {icon} {label}
     </Link>
   );
