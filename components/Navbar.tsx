@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationCenter from '@/components/NotificationCenter';
 import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail, Cpu } from 'lucide-react';
+import AppLogo from '@/public/logo/logo.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -86,7 +87,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
               <Image 
-                src="/logo/logo.png" 
+                src={AppLogo}
                 alt="SmartJuanPeso AI Logo"
                 fill
                 className="object-contain"
