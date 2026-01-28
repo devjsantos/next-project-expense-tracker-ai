@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { 
-  BrainCircuit, 
   Sparkles, 
   Target, 
   BarChart3, 
@@ -10,7 +9,9 @@ import {
   ShieldCheck, 
   ChevronRight, 
   Rocket,
-  Users
+  Users,
+  Lightbulb,
+  CheckCircle2
 } from 'lucide-react';
 
 const AboutPage = () => {
@@ -23,25 +24,25 @@ const AboutPage = () => {
         
         <div className='relative z-10 max-w-5xl mx-auto text-center'>
           <div className='inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm mb-8'>
-            <BrainCircuit className='text-indigo-500' size={16} />
-            <span className='text-[10px] font-black uppercase tracking-[0.2em] text-slate-500'>The Neural Manifesto</span>
+            <Lightbulb className='text-indigo-500' size={16} />
+            <span className='text-[10px] font-black uppercase tracking-[0.2em] text-slate-500'>Our Mission</span>
           </div>
           
           <h1 className='text-5xl md:text-8xl font-black tracking-tighter uppercase mb-6 leading-[0.9]'>
-            Smarter Money <br />
-            <span className='text-indigo-600 dark:text-indigo-500'>Starts Here</span>
+            Better Living <br />
+            <span className='text-indigo-600 dark:text-indigo-500'>Through AI</span>
           </h1>
           
           <p className='text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10'>
-            SmartJuanPeso AI is an intelligent ecosystem designed to bridge the gap between complex financial data and actionable human decisions.
+            SmartJuanPeso AI was created to simplify financial tracking for everyone. We believe that managing your money should be as easy as sending a text message.
           </p>
 
           <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
             <Link href='/sign-up' className='px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-600 dark:hover:bg-indigo-500 dark:hover:text-white transition-all shadow-xl'>
-              Deploy Smart Account
+              Create Free Account
             </Link>
             <Link href='/contact' className='px-8 py-4 border border-slate-200 dark:border-slate-800 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all'>
-              Learn More
+              Talk to Us
             </Link>
           </div>
         </div>
@@ -56,21 +57,21 @@ const AboutPage = () => {
             <div className='max-w-3xl'>
               <div className='inline-flex items-center gap-2 text-indigo-500 mb-6'>
                 <Target size={20} />
-                <span className='text-[10px] font-black uppercase tracking-[0.3em]'>Our Objective</span>
+                <span className='text-[10px] font-black uppercase tracking-[0.3em]'>Our Focus</span>
               </div>
               <h2 className='text-3xl md:text-5xl font-black uppercase tracking-tighter mb-8 leading-none'>
-                Transforming the <span className='text-slate-400'>Financial DNA</span> through Intelligence
+                Helping You Build <span className='text-slate-400'>Financial Freedom</span>
               </h2>
               <p className='text-slate-500 dark:text-slate-400 text-lg leading-relaxed mb-12'>
-                We leverage neural spending analysis to revolutionize how individuals achieve wellness. No more manual spreadsheets—just pure, automated logic tailored to your life.
+                We use smart technology to analyze your spending and find ways to save. No more messy spreadsheets or forgotten receipts—just clear, automated insights that help you grow your wealth.
               </p>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-slate-100 dark:border-slate-800'>
               {[
-                { label: 'Neural Users', val: '10K+', color: 'text-indigo-600' },
-                { label: 'Capital Tracked', val: '₱2.4M', color: 'text-slate-900 dark:text-white' },
-                { label: 'Logic Accuracy', val: '99.9%', color: 'text-indigo-500' }
+                { label: 'Happy Users', val: '10K+', color: 'text-indigo-600' },
+                { label: 'Savings Tracked', val: '₱2.4M', color: 'text-slate-900 dark:text-white' },
+                { label: 'AI Accuracy', val: '99.9%', color: 'text-indigo-500' }
               ].map((stat, i) => (
                 <div key={i}>
                   <p className={`text-4xl font-black tracking-tighter ${stat.color}`}>{stat.val}</p>
@@ -81,23 +82,23 @@ const AboutPage = () => {
           </div>
         </section>
 
-        {/* 3. CORE ARCHITECTURE (Features) */}
+        {/* 3. CORE FEATURES */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
           {[
             { 
               icon: <Zap size={24} />, 
-              title: 'Neural Insights', 
-              desc: 'Deep learning analysis of every transaction to find hidden leaks in your budget.' 
+              title: 'Smart Insights', 
+              desc: 'Our AI looks at your spending habits and suggests simple ways to cut costs.' 
             },
             { 
               icon: <BarChart3 size={24} />, 
-              title: 'Auto-Ledger', 
-              desc: 'Intelligent categorization with 99% accuracy. No manual input required.' 
+              title: 'Auto-Budgeting', 
+              desc: 'We automatically organize your expenses into categories like food, rent, and fun.' 
             },
             { 
               icon: <ShieldCheck size={24} />, 
-              title: 'Secure Nodes', 
-              desc: 'Bank-grade encryption protecting your financial privacy at every step.' 
+              title: 'Safe & Private', 
+              desc: 'Your financial data is encrypted and protected with bank-level security.' 
             }
           ].map((feature, i) => (
             <div key={i} className='bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/60 shadow-xl shadow-slate-200/5 hover:border-indigo-500/50 transition-colors'>
@@ -115,11 +116,11 @@ const AboutPage = () => {
           <div className='space-y-6'>
             <div className='inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-3 py-1 rounded-full'>
               <Rocket size={14} />
-              <span className='text-[10px] font-black uppercase tracking-widest'>The Origin</span>
+              <span className='text-[10px] font-black uppercase tracking-widest'>The Story</span>
             </div>
-            <h2 className='text-4xl font-black uppercase tracking-tighter leading-none'>Built for the <br /> Next-Gen Economy</h2>
+            <h2 className='text-4xl font-black uppercase tracking-tighter leading-none'>Made in the <br /> Philippines</h2>
             <p className='text-slate-500 dark:text-slate-400 leading-relaxed'>
-              SmartJuanPeso AI was born in 2025 with a single mission: to provide everyone with the tools of a professional financial analyst through the power of AI.
+              SmartJuanPeso AI was born in 2025 with one goal: to empower Filipinos with better financial tools. We wanted to make sure everyone has access to the same technology used by big banks.
             </p>
             <div className='flex items-center gap-4 py-4'>
               <div className='flex -space-x-3'>
@@ -129,17 +130,17 @@ const AboutPage = () => {
                   </div>
                 ))}
               </div>
-              <p className='text-[10px] font-black uppercase tracking-widest text-slate-400'>Trusted by 10,000+ Nodes</p>
+              <p className='text-[10px] font-black uppercase tracking-widest text-slate-400'>Trusted by 10,000+ Users</p>
             </div>
           </div>
           
           <div className='bg-slate-900 dark:bg-indigo-600 rounded-[3.5rem] p-10 relative overflow-hidden text-white shadow-2xl'>
             <div className='absolute bottom-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mb-20 -mr-20' />
-            <h4 className='text-xl font-black uppercase tracking-tighter mb-6'>Our Core Stack</h4>
+            <h4 className='text-xl font-black uppercase tracking-tighter mb-6'>What's Inside</h4>
             <div className='space-y-4'>
-              {['AI-First Logic', 'Clerk Managed Auth', 'Neural Dashboard', 'Real-time Ledger'].map((item, i) => (
+              {['Smart AI Tracking', 'Secure Login', 'Beautiful Dashboard', 'Real-time Reports'].map((item, i) => (
                 <div key={i} className='flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/10'>
-                  <div className='w-2 h-2 bg-indigo-400 rounded-full shadow-[0_0_10px_rgba(129,140,248,0.8)]' />
+                  <CheckCircle2 size={16} className='text-indigo-300' />
                   <span className='text-xs font-bold uppercase tracking-widest'>{item}</span>
                 </div>
               ))}
@@ -153,11 +154,11 @@ const AboutPage = () => {
           
           <div className='relative z-10'>
             <h2 className='text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-8 leading-none'>
-              Ready to Upgrade your <br /> <span className='text-indigo-500'>Financial OS?</span>
+              Ready to take <br /> <span className='text-indigo-500'>Control?</span>
             </h2>
             <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
               <Link href='/sign-up' className='group bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 transition-all shadow-2xl shadow-indigo-500/20'>
-                Initialize Account <ChevronRight size={16} className='group-hover:translate-x-1 transition-transform' />
+                Get Started Today <ChevronRight size={16} className='group-hover:translate-x-1 transition-transform' />
               </Link>
             </div>
           </div>
