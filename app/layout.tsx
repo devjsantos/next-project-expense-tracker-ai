@@ -19,9 +19,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SmartJuanPeso AI - Smart Financial Management',
-  description: 'AI-powered expense tracking app with intelligent insights.',
+  title: 'SmartJuanPeso AI - Neural Finance',
+  description: 'AI-powered financial logic and expense tracking.',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SmartJuanPeso AI',
+  },
   icons: {
     icon: '/icons/icon-192x192.png',
     apple: '/icons/icon-512x512.png',
@@ -33,7 +38,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#10b981',
+  themeColor: '#6366f1', // Indigo to match your logo/branding
 };
 
 export default function RootLayout({

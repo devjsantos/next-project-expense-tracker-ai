@@ -50,9 +50,17 @@ export default function Navbar() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
+
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstall(false);
+
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+      setDeferredPrompt(null);
+      setShowInstall(false);
+    } else {
+      console.log('User dismissed the install prompt');
+    }
   };
 
   const fetchUnread = useCallback(async () => {
@@ -124,8 +132,8 @@ export default function Navbar() {
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className={`p-2.5 rounded-2xl transition-all relative ${showNotifications
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
                     }`}
                 >
                   <Bell size={20} />
