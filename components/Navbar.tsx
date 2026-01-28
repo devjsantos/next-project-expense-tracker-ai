@@ -82,10 +82,10 @@ export default function Navbar() {
     <nav className="sticky top-0 z-[100] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-        {/* Logo Section */}
+          {/* Logo Section */}
           <Link href="/" className="flex items-center gap-3 group shrink-0">
             <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
-              <Image 
+              <Image
                 src="/logo/logo.png"
                 alt="SmartJuanPeso AI Logo"
                 fill
@@ -97,15 +97,14 @@ export default function Navbar() {
               SMART<span className="text-indigo-500">JUANPESO</span> AI
             </span>
           </Link>
-
           {/* Desktop Nav - Centered Alignment */}
           <div className="hidden md:flex items-center gap-1 bg-slate-100/50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-            <NavLink 
-              href={isSignedIn ? "/dashboard" : "/"} 
-              icon={<LayoutDashboard size={16} />} 
-              label={isSignedIn ? "Neural Dashboard" : "Central Hub"} 
+            <NavLink
+              href={isSignedIn ? "/dashboard" : "/"}
+              icon={<LayoutDashboard size={16} />}
+              label={isSignedIn ? "Neural Dashboard" : "Central Hub"}
             />
-            
+
             <SignedOut>
               <NavLink href="/about" icon={<Info size={16} />} label="Architecture" />
               <NavLink href="/contact" icon={<Mail size={16} />} label="Support Desk" />
@@ -119,16 +118,15 @@ export default function Navbar() {
           {/* Actions Section */}
           <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
-            
+
             <SignedIn>
               <div className="relative" ref={notificationRef}>
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className={`p-2.5 rounded-2xl transition-all relative ${
-                    showNotifications 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
-                  }`}
+                  className={`p-2.5 rounded-2xl transition-all relative ${showNotifications
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
+                    }`}
                 >
                   <Bell size={20} />
                   {unreadCount > 0 && (
@@ -173,24 +171,24 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-5">
-            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
-             <LayoutDashboard size={18} /> {isSignedIn ? "Neural Dashboard" : "Central Hub"}
-            </Link>
-            
-            <SignedOut>
-              <Link href="/about" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                <Info size={18} /> Architecture
-              </Link>
-              <Link href="/contact" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                <Mail size={18} /> Support Desk
-              </Link>
-            </SignedOut>
+          <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+            <LayoutDashboard size={18} /> {isSignedIn ? "Neural Dashboard" : "Central Hub"}
+          </Link>
 
-            <SignedIn>
-             <Link href="/budget" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
-               <Wallet size={18} /> Logic Planner
-             </Link>
-            </SignedIn>
+          <SignedOut>
+            <Link href="/about" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+              <Info size={18} /> Architecture
+            </Link>
+            <Link href="/contact" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+              <Mail size={18} /> Support Desk
+            </Link>
+          </SignedOut>
+
+          <SignedIn>
+            <Link href="/budget" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest text-slate-600 dark:text-slate-300">
+              <Wallet size={18} /> Logic Planner
+            </Link>
+          </SignedIn>
         </div>
       )}
     </nav>
