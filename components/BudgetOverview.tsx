@@ -139,8 +139,7 @@ export default function BudgetOverview({ month }: { month?: string }) {
             </div>
             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
               <span>Spent: ₱{data.totalSpent.toLocaleString()}</span>
-              <span>Limit: ₱{data.budget?.monthlyTotal.toLocaleString()}</span>
-            </div>
+              <span>Limit: ₱{(data.budget?.monthlyTotal || 0).toLocaleString()}</span>            </div>
           </div>
         </div>
 

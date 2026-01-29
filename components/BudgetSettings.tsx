@@ -40,16 +40,18 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   const [allocations, setAllocations] = useState<Allocation[]>(
     initial?.allocations ?? defaultCategories.map(category => ({ category, amount: 0 }))
   );
-  
+
   const { addToast } = useToast();
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [localToast, setLocalToast] = useState<LocalToastState | null>(null);
 
   // Human-readable month display
   const displayMonth = useMemo(() => {
-    return new Date(month + "-02").toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (!month) return "Select Month";
+    const date = new Date(month + "-02");
+    if (isNaN(date.getTime())) return "Invalid Date"; // Check if date is valid
+    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
   }, [month]);
-
   const allocationSum = allocations.reduce((sum, a) => sum + a.amount, 0);
   const remainingToAllocate = monthlyTotal - allocationSum;
   const isOverAllocated = allocationSum > monthlyTotal;
@@ -71,8 +73,8 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     }
   }, [month]);
 
-  useEffect(() => { 
-    fetchBudget(); 
+  useEffect(() => {
+    fetchBudget();
   }, [fetchBudget]);
 
   const handleAllocationChange = (index: number, value: string) => {
@@ -153,8 +155,10 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           <div className={`p-4 rounded-xl border flex flex-col justify-center ${isOverAllocated ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
             <span className="text-xs font-bold uppercase text-gray-500">Remaining to Allocate</span>
             <span className={`text-xl font-bold ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
-              ₱{remainingToAllocate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+              ₱{(remainingToAllocate || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}            </span>
           </div>
         </div>
 
@@ -189,8 +193,8 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           </button>
           <button
             type="button"
-            onClick={onClose}
-            className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-all"
+            onClick={() => onClose?.()} // Safe navigation call
+            className="..."
           >
             Cancel
           </button>
@@ -198,10 +202,10 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
       </form>
 
       {localToast && (
-        <Toast 
-          message={localToast.message} 
-          type={localToast.type} 
-          onClose={() => setLocalToast(null)} 
+        <Toast
+          message={localToast.message}
+          type={localToast.type}
+          onClose={() => setLocalToast(null)}
         />
       )}
     </div>
