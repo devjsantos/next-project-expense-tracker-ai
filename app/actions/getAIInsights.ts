@@ -2,7 +2,8 @@
 
 import { checkUser } from '@/lib/checkUser';
 import { db } from '@/lib/prisma';
-import { generateExpenseInsights, AIInsight, ExpenseRecord } from '@/lib/ai';
+import { generateExpenseInsights, AIInsight, ExpenseRecord, AIValidationError } from '@/lib/ai';
+import reportAiFailure from './reportAiFailure';
 
 export async function getAIInsights(): Promise<AIInsight[]> {
   try {
@@ -70,8 +71,27 @@ export async function getAIInsights(): Promise<AIInsight[]> {
     }));
 
     // Generate AI insights
-    const insights = await generateExpenseInsights(expenseData);
-    return insights;
+    try {
+      const insights = await generateExpenseInsights(expenseData);
+      return insights;
+    } catch (err: any) {
+      // If AI returned invalid structure, persist details and return a fallback with detailsId
+      if (err instanceof AIValidationError) {
+        const r = await reportAiFailure({ message: err.message, errors: err.errors });
+        return [
+          {
+            id: 'error-1',
+            type: 'warning',
+            title: 'Insights Validation Error',
+            message: 'AI produced invalid insight format. Click details to view.',
+            action: 'View details',
+            confidence: 0.5,
+            detailsId: r?.id,
+          } as any,
+        ];
+      }
+      throw err;
+    }
   } catch (error) {
     console.error('Error getting AI insights:', error);
 
