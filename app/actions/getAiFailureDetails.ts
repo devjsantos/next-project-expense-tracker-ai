@@ -4,7 +4,9 @@ import { db } from '@/lib/prisma';
 
 export default async function getAiFailureDetails(id: string) {
   try {
-    const row = await db.aiEvent.findUnique({ where: { id } });
+    // Change .aiEvent to .aIEvent
+    const row = await db.aIEvent.findUnique({ where: { id } }); 
+    
     if (!row) return { ok: false, error: 'Not found' };
     return { ok: true, details: row.details, message: row.message, createdAt: row.createdAt };
   } catch (error) {

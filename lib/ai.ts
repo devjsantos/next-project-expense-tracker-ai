@@ -1,7 +1,9 @@
 import OpenAI from 'openai';
 import Ajv from 'ajv';
-
 /* ================= TYPES ================= */
+// KEEP THIS ONE
+// @ts-ignore
+const ajv = new Ajv({ allErrors: true, strict: false, keywords: [] });
 
 export type InsightType = 'warning' | 'info' | 'success' | 'tip';
 
@@ -105,7 +107,6 @@ export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries =
 }
 
 /* ============== AJV SCHEMAS ============== */
-const ajv = new Ajv({ allErrors: true, strict: false });
 
 const insightSchema = {
   type: 'object',

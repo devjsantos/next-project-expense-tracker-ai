@@ -7,7 +7,7 @@ import { checkUser } from '@/lib/checkUser';
 export default async function reportAiFailure(details: { message: string; errors?: any }) {
   try {
     const user = await checkUser();
-    const created = await db.aiEvent.create({
+    const created = await db.aIEvent.create({
       data: {
         userId: user?.clerkUserId || null,
         eventType: 'ai_failure',

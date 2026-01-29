@@ -17,6 +17,7 @@ model User {
   records Records[]
   budgets Budget[]
   emailReports EmailReport[]
+  aiEvents AIEvent[]
   recurringExpenses RecurringExpense[]
   notifications Notification[]
 }
@@ -118,7 +119,7 @@ model Notification {
 
 model AIEvent {
   id String @id @default(uuid())
-  userId String? @unique(false)
+  userId String?
   user User? @relation(fields: [userId], references: [clerkUserId], onDelete: SetNull)
   eventType String
   message String
