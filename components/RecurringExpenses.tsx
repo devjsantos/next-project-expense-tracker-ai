@@ -161,7 +161,7 @@ export default function RecurringExpenses() {
         <div className="bg-indigo-600 rounded-2xl p-5 text-white flex justify-between items-center relative overflow-hidden">
           <div className="relative z-10">
             <p className="text-[9px] font-bold uppercase tracking-[0.15em] opacity-80">Monthly Commitment</p>
-            <h4 className="text-2xl font-black mt-0.5">₱{totalMonthly.toLocaleString()}</h4>
+            <h4 className="text-2xl font-black mt-0.5">₱{(totalMonthly || 0).toLocaleString()}</h4>
           </div>
           <CreditCard size={32} className="opacity-20 absolute -right-2 -bottom-2 rotate-12" />
         </div>
