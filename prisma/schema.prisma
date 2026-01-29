@@ -17,6 +17,7 @@ model User {
   records Records[]
   budgets Budget[]
   emailReports EmailReport[]
+  aiEvents AIEvent[]
   recurringExpenses RecurringExpense[]
   notifications Notification[]
 }
@@ -112,6 +113,17 @@ model Notification {
   title String
   message String
   read Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model AIEvent {
+  id String @id @default(uuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [clerkUserId], onDelete: SetNull)
+  eventType String
+  message String
+  details Json?
   createdAt DateTime @default(now())
   @@index([userId])
 }

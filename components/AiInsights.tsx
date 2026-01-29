@@ -62,6 +62,17 @@ const AIInsights = () => {
     }
   };
 
+  // If AI fails repeatedly, show a persistent banner and report telemetry
+  const reportFailure = async (details: { message: string; errors?: any }) => {
+    try {
+      const { default: report } = await import('@/app/actions/reportAiFailure');
+      await report(details);
+      addToast('AI failure reported', 'info');
+    } catch (err) {
+      addToast('Failed to report AI failure', 'error');
+    }
+  };
+
   const handleEmailReport = async () => {
     setIsEmailing(true);
     try {
@@ -78,6 +89,32 @@ const AIInsights = () => {
 
   const handleActionClick = async (insight: InsightData) => {
     if (!insight.action) return;
+    // If this is a fallback insight, treat the action as a retry trigger
+    if (insight.id && insight.id.startsWith('fallback')) {
+      await loadInsights();
+      return;
+    }
+    // If this insight has an attached details id, fetch and show details
+    const detailsId = (insight as any).detailsId;
+    if (detailsId) {
+      setIsLoading(true);
+      try {
+        const { default: getDetails } = await import('@/app/actions/getAiFailureDetails');
+        const res = await getDetails(detailsId);
+        if (res?.ok) {
+          addToast('Fetched AI error details', 'info');
+          // Show details in a toast or modal — here we add a persistent toast with JSON
+          addToast(JSON.stringify(res.details || res), 'info');
+        } else {
+          addToast('Failed to fetch details', 'error');
+        }
+      } catch (err) {
+        addToast('Error fetching details', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
     const existingAnswer = aiAnswers.find((a) => a.insightId === insight.id);
     if (existingAnswer) {
       setAiAnswers((prev) => prev.filter((a) => a.insightId !== insight.id));
@@ -99,6 +136,14 @@ const AIInsights = () => {
   };
 
   useEffect(() => { loadInsights(); }, []);
+
+  useEffect(() => {
+    // Detect fallback/error insights and report once
+    const hasError = insights.some(i => i.id?.startsWith('err') || i.id?.startsWith('error') || i.id?.startsWith('fallback'));
+    if (hasError) {
+      reportFailure({ message: 'AI returned fallback insights', errors: insights });
+    }
+  }, [insights]);
 
   const getInsightUI = (type: string) => {
     switch (type) {
@@ -164,6 +209,22 @@ const AIInsights = () => {
     <div className='bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800'>
       {/* Header */}
       <div className='flex items-center justify-between mb-8'>
+        {/** Persistent AI failure banner */}
+        {insights.some(i => i.id?.startsWith('err') || i.id?.startsWith('error') || i.id?.startsWith('fallback')) && (
+          <div className='w-full mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 flex items-center justify-between'>
+            <div className='flex items-center gap-3'>
+              <AlertTriangle size={18} className='text-rose-600' />
+              <div>
+                <div className='text-sm font-black text-rose-700 dark:text-rose-200'>AI Insights Unavailable</div>
+                <div className='text-xs text-rose-600 dark:text-rose-300'>We couldn't fetch reliable AI insights. You can retry or report this issue.</div>
+              </div>
+            </div>
+            <div className='flex gap-2'>
+              <button onClick={loadInsights} className='px-3 py-2 bg-white rounded-xl font-black text-xs'>Retry Analysis</button>
+              <button onClick={() => reportFailure({ message: 'User reported AI failure from UI' })} className='px-3 py-2 bg-rose-600 text-white rounded-xl font-black text-xs'>Report</button>
+            </div>
+          </div>
+        )}
         <div className='flex items-center gap-4'>
           <div className='w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20'>
             <Bot className="text-white" size={24} />

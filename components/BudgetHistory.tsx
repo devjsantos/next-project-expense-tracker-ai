@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  History, 
-  Search, 
-  ChevronDown, 
-  Layers, 
+import {
+  History,
+  Search,
+  ChevronDown,
+  Layers,
   CalendarDays,
   Target,
   ArrowRightCircle
@@ -42,17 +42,18 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
-      const dateStr = new Date(b.monthStart).toLocaleString('default', { 
-        month: 'long', 
-        year: 'numeric' 
+      if (!b?.monthStart) return false; // Skip items with no date
+
+      const dateStr = new Date(b.monthStart).toLocaleString('default', {
+        month: 'long',
+        year: 'numeric'
       });
       return dateStr.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [budgets, searchTerm]);
-
   return (
     <div className="bg-white dark:bg-slate-900/50 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col h-full max-h-[600px]">
-      
+
       {/* 1. Header & Search Protocol */}
       <div className="p-6 border-b border-slate-50 dark:border-slate-800/50 space-y-4">
         <div className="flex items-center justify-between">
@@ -73,7 +74,7 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
 
         <div className="relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={14} />
-          <input 
+          <input
             type="text"
             placeholder="Search timeline..."
             value={searchTerm}
@@ -102,45 +103,44 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
             return (
               <div
                 key={b.id}
-                className={`group transition-all rounded-2xl border ${
-                  isSelected
-                    ? 'border-indigo-500/30 bg-indigo-50/30 dark:bg-indigo-500/5'
-                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                }`}
+                className={`group transition-all rounded-2xl border ${isSelected
+                  ? 'border-indigo-500/30 bg-indigo-50/30 dark:bg-indigo-500/5'
+                  : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
               >
                 <div className="p-3 flex items-center gap-3">
                   {/* Selector Dot */}
-                  <button 
+                  <button
                     onClick={() => handleSelectMonth(b.monthStart)}
-                    className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                      isSelected 
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-indigo-500'
-                    }`}
+                    className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all ${isSelected
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-indigo-500'
+                      }`}
                   >
                     <ArrowRightCircle size={16} />
                   </button>
 
-                  <div 
-                    className="flex-grow cursor-pointer" 
+                  <div
+                    className="flex-grow cursor-pointer"
                     onClick={() => handleSelectMonth(b.monthStart)}
                   >
                     <div className="text-xs font-black tracking-tight text-slate-800 dark:text-slate-200 uppercase">
-                      {new Date(b.monthStart).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      {b.monthStart
+                        ? new Date(b.monthStart).toLocaleString('default', { month: 'long', year: 'numeric' })
+                        : "Unknown Cycle"}
                     </div>
                     <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 mt-0.5">
                       <Target size={10} className="text-indigo-500" />
-                      ₱{b.monthlyTotal.toLocaleString()}
+                      ₱{(b.monthlyTotal || 0).toLocaleString()}
                     </div>
                   </div>
 
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : b.id)}
-                    className={`p-2 rounded-lg transition-all ${
-                      isExpanded 
-                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' 
-                        : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
+                    className={`p-2 rounded-lg transition-all ${isExpanded
+                      ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white'
+                      : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
                   >
                     <ChevronDown size={14} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                   </button>
@@ -160,7 +160,7 @@ export default function BudgetHistory({ budgets = [] }: { budgets: BudgetItem[] 
                         >
                           <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{a.category}</span>
                           <span className="text-[10px] font-black text-slate-800 dark:text-slate-200">
-                            ₱{a.amount.toLocaleString()}
+                            ₱{(a.amount || 0).toLocaleString()}
                           </span>
                         </div>
                       ))}

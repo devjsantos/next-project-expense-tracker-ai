@@ -5,22 +5,22 @@ import { Record as MyExpenseRecord } from '@/types/Record';
 import deleteRecord from '@/app/actions/deleteRecord';
 import updateRecord from '@/app/actions/updateRecord';
 import { useToast } from '@/components/ToastProvider';
-import { 
-  Pencil, 
-  Trash2, 
-  Calendar, 
-  Tag, 
-  X, 
-  Check, 
-  Loader2, 
-  Utensils, 
-  Car, 
-  ShoppingBag, 
-  Lightbulb, 
-  Film, 
-  HeartPulse, 
-  Package, 
-  Wallet 
+import {
+  Pencil,
+  Trash2,
+  Calendar,
+  Tag,
+  X,
+  Check,
+  Loader2,
+  Utensils,
+  Car,
+  ShoppingBag,
+  Lightbulb,
+  Film,
+  HeartPulse,
+  Package,
+  Wallet
 } from 'lucide-react';
 
 /* ================= TYPES ================= */
@@ -45,9 +45,11 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [editData, setEditData] = useState({
-    text: record.text,
-    amount: record.amount.toString(),
-    date: new Date(record.date).toISOString().split('T')[0]
+    text: record.text || "",
+    amount: (record.amount || 0).toString(),
+    date: record.date
+      ? new Date(record.date).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0]
   });
 
   const handleDelete = async () => {
@@ -115,13 +117,13 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
   return (
     <>
       <div className="group relative p-4 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 rounded-[2rem] transition-all duration-300 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 flex flex-col gap-3 overflow-hidden">
-        
+
         {/* DATE - TOP RIGHT (Small Text) */}
         <div className="absolute top-4 right-5 flex items-center gap-1">
-           <Calendar size={10} className="text-slate-300" />
-           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-             {new Date(record.date).toLocaleDateString()}
-           </span>
+          <Calendar size={10} className="text-slate-300" />
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+            {record.date ? new Date(record.date).toLocaleDateString() : 'No Date'}
+          </span>
         </div>
 
         <div className="flex items-start gap-4">
@@ -136,7 +138,7 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
             <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight truncate uppercase leading-tight mb-2">
               {record.text}
             </h4>
-            
+
             {/* Category & Amount Row (Bottom) */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-lg shrink-0">
@@ -145,11 +147,11 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
                   {record.category}
                 </span>
               </div>
-              
+
               {!isManageMode && (
                 <div className="shrink-0">
                   <span className="font-black text-slate-900 dark:text-white text-base tracking-tighter">
-                    ₱{Number(record.amount).toLocaleString()}
+                    ₱{(Number(record.amount) || 0).toLocaleString()}
                   </span>
                 </div>
               )}
@@ -182,7 +184,7 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setIsEditModalOpen(false)} />
-          
+
           <div className="relative bg-white dark:bg-slate-900 w-full max-w-md p-8 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between mb-8">
               <div>

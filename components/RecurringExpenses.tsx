@@ -45,18 +45,26 @@ export default function RecurringExpenses() {
   const totalMonthly = items
     .filter(i => i.active)
     .reduce((acc, curr) => {
-      if (curr.frequency === 'weekly') return acc + (curr.amount * 4);
-      if (curr.frequency === 'yearly') return acc + (curr.amount / 12);
-      return acc + curr.amount;
+      const amt = curr.amount || 0; // Guard the amount
+      if (curr.frequency === 'weekly') return acc + (amt * 4);
+      if (curr.frequency === 'yearly') return acc + (amt / 12);
+      return acc + amt;
     }, 0);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard the date
+    const dateObj = new Date(form.startDate || new Date());
+    const nextDueDate = isNaN(dateObj.getTime())
+      ? new Date().toISOString()
+      : dateObj.toISOString();
+
     const payload = {
       ...form,
-      amount: parseFloat(form.amount),
-      dayOfMonth: Number(form.dayOfMonth),
-      nextDueDate: new Date(form.startDate).toISOString(),
+      amount: parseFloat(form.amount) || 0,
+      dayOfMonth: Number(form.dayOfMonth) || 1,
+      nextDueDate,
     };
 
     try {
@@ -153,7 +161,7 @@ export default function RecurringExpenses() {
         <div className="bg-indigo-600 rounded-2xl p-5 text-white flex justify-between items-center relative overflow-hidden">
           <div className="relative z-10">
             <p className="text-[9px] font-bold uppercase tracking-[0.15em] opacity-80">Monthly Commitment</p>
-            <h4 className="text-2xl font-black mt-0.5">₱{totalMonthly.toLocaleString()}</h4>
+            <h4 className="text-2xl font-black mt-0.5">₱{(totalMonthly || 0).toLocaleString()}</h4>
           </div>
           <CreditCard size={32} className="opacity-20 absolute -right-2 -bottom-2 rotate-12" />
         </div>
@@ -180,8 +188,7 @@ export default function RecurringExpenses() {
                     <span className={item.active ? "text-indigo-500" : ""}>₱{item.amount.toLocaleString()}</span>
                     <span className="opacity-30">•</span>
                     {/* Add a fallback check for 0 or undefined */}
-                    <span>Every {item.dayOfMonth > 0 ? getOrdinal(item.dayOfMonth) : getOrdinal(1)}</span>
-                    <span className="opacity-30">•</span>
+                    <span>Every {item.dayOfMonth ? getOrdinal(item.dayOfMonth) : 'Month-end'}</span>                    <span className="opacity-30">•</span>
                     <span>{item.frequency}</span>
                   </div>
                 </div>

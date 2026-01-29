@@ -1,6 +1,9 @@
 import OpenAI from 'openai';
-
+import Ajv from 'ajv';
 /* ================= TYPES ================= */
+// KEEP THIS ONE
+// @ts-ignore
+const ajv = new Ajv({ allErrors: true, strict: false, keywords: [] });
 
 export type InsightType = 'warning' | 'info' | 'success' | 'tip';
 
@@ -34,6 +37,15 @@ export interface AIInsight {
   message: string;
   action?: string;
   confidence: number;
+}
+
+export class AIValidationError extends Error {
+  public readonly errors: any;
+  constructor(message: string, errors: any) {
+    super(message);
+    this.name = 'AIValidationError';
+    this.errors = errors;
+  }
 }
 
 /* ================= OPENAI CLIENT ================= */
@@ -94,6 +106,35 @@ export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries =
   }
 }
 
+/* ============== AJV SCHEMAS ============== */
+
+const insightSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', enum: ['warning', 'info', 'success', 'tip'] },
+    title: { type: 'string' },
+    message: { type: 'string' },
+    action: { type: 'string' },
+    confidence: { type: 'number', minimum: 0, maximum: 1 },
+  },
+  required: ['type', 'title', 'message', 'confidence'],
+  additionalProperties: false,
+};
+
+const receiptSchema = {
+  type: 'object',
+  properties: {
+    amount: { type: 'number' },
+    description: { type: 'string' },
+    category: { type: 'string' },
+  },
+  required: ['amount', 'description', 'category'],
+  additionalProperties: false,
+};
+
+const validateInsight = ajv.compile(insightSchema);
+const validateReceipt = ajv.compile(receiptSchema);
+
 /* ================= LOCAL FALLBACK ================= */
 
 function localCategorize(description: string): string {
@@ -109,64 +150,73 @@ function localCategorize(description: string): string {
 /* ================= AI INSIGHTS ================= */
 
 export async function generateExpenseInsights(expenses: ExpenseRecord[]): Promise<AIInsight[]> {
-  try {
-    const summary = expenses.slice(0, 15).map(e => ({
-      amount: e.amount,
-      category: e.category,
-      description: e.description,
-    }));
+  const summary = expenses.slice(0, 15).map(e => ({
+    amount: e.amount,
+    category: e.category,
+    description: e.description,
+  }));
 
-    const completion = await openai.chat.completions.create({
-      model: PRIMARY_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a Filipino Financial Advisor. You MUST respond with a JSON array of objects. Each object MUST have these exact keys: "type", "title", "message", "action", "confidence". Do not include <think> tags or markdown.'
-        },
-        { role: 'user', content: `Analyze these 2026 expenses and give 3 insights: ${JSON.stringify(summary)}` },
-      ],
-      max_tokens: 600,
-      temperature: 0.7,
-      extra_body: {
-        "models": TEXT_FALLBACKS,
-        "route": "fallback"
-      }
-    } as any);
+  const completion = await openai.chat.completions.create({
+    model: PRIMARY_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a Filipino Financial Advisor. You MUST respond with a JSON array of objects. Each object MUST have these exact keys: "type", "title", "message", "action", "confidence". Do not include <think> tags or markdown.'
+      },
+      { role: 'user', content: `Analyze these 2026 expenses and give 3 insights: ${JSON.stringify(summary)}` },
+    ],
+    max_tokens: 600,
+    temperature: 0.7,
+    extra_body: {
+      "models": TEXT_FALLBACKS,
+      "route": "fallback"
+    }
+  } as any);
 
-    const content = completion.choices[0].message.content || '[]';
-    const cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```json\s*|```$/g, '').trim();
+  const content = completion.choices[0].message.content || '[]';
+  const cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```json\s*|```$/g, '').trim();
 
-    // Parse the JSON
-    const rawData = JSON.parse(cleaned);
+  // Parse the JSON
+  const rawData = JSON.parse(cleaned);
 
-    // ENSURE ARRAY: If AI returns a single object instead of an array
-    const rawInsights = Array.isArray(rawData) ? rawData : [rawData];
+  // ENSURE ARRAY: If AI returns a single object instead of an array
+  const rawInsights = Array.isArray(rawData) ? rawData : [rawData];
 
-    return rawInsights.map((insight: any, i: number): AIInsight => {
-      // FLEXIBLE MAPPING: This catches the AI if it uses the wrong property names
-      const title = insight.title || insight.headline || 'Financial Insight';
-      const message = insight.message || insight.insight || insight.description || insight.text || 'Analysis complete';
-      const action = insight.action || insight.suggestion || insight.recommendation || 'View details';
+  // Strict validation using AJV
+  const validated: AIInsight[] = [];
+  const errors: any[] = [];
 
-      return {
+  rawInsights.forEach((insight: any, i: number) => {
+    // Flexible mapping for alternate property names BEFORE validation
+    const mapped = {
+      type: insight.type || insight.headline || 'info',
+      title: insight.title || insight.headline || 'Financial Insight',
+      message: insight.message || insight.insight || insight.description || insight.text || 'Analysis complete',
+      action: insight.action || insight.suggestion || insight.recommendation || 'View details',
+      confidence: typeof insight.confidence === 'number' ? insight.confidence : 0.9,
+    };
+
+    const ok = validateInsight(mapped);
+    if (!ok) {
+      errors.push({ index: i, data: mapped, errors: validateInsight.errors });
+    } else {
+      validated.push({
         id: `ai-${Date.now()}-${i}`,
-        type: normalizeInsightType(insight.type),
-        title: title,
-        message: message,
-        action: action,
-        confidence: insight.confidence || 0.9,
-      };
-    });
-  } catch (error) {
-    console.error('AI Insight Error:', error);
-    return [{
-      id: 'err',
-      type: 'info',
-      title: 'AI Busy',
-      message: 'Models are at capacity. Please click Sync Data again.',
-      confidence: 0.5
-    }];
+        type: normalizeInsightType(mapped.type),
+        title: mapped.title,
+        message: mapped.message,
+        action: mapped.action,
+        confidence: mapped.confidence,
+      });
+    }
+  });
+
+  if (errors.length > 0) {
+    // Throw a structured validation error so callers (server actions) can respond appropriately
+    throw new AIValidationError('AI returned invalid insight structure', errors);
   }
+
+  return validated;
 }
 /* ================= CATEGORIZATION ================= */
 
@@ -183,7 +233,13 @@ export async function categorizeExpense(description: string): Promise<string> {
     } as any);
 
     const category = completion.choices[0].message.content?.trim();
-    return category || localCategorize(description);
+    // Validate category against known list
+    const validCategories = ['Food','Transportation','Entertainment','Shopping','Bills','Healthcare','Other'];
+    if (typeof category === 'string' && validCategories.includes(category)) return category;
+    if (typeof category === 'string') {
+      console.warn('AI returned unknown category:', category);
+    }
+    return localCategorize(description);
   } catch {
     return localCategorize(description);
   }
@@ -239,7 +295,12 @@ export async function analyzeReceiptImage(base64Image: string, mimeType: string)
 
     const content = completion.choices[0].message.content || '';
     const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
-    return JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
+    const ok = validateReceipt(parsed);
+    if (!ok) {
+      throw new AIValidationError('Invalid receipt JSON', validateReceipt.errors);
+    }
+    return parsed;
   } catch (error) {
     console.error("Vision Error:", error);
     throw new Error("AI services are currently congested. Please try again.");

@@ -6,12 +6,12 @@ import RecordItem from './RecordItem';
 import { Record } from '@/types/Record';
 import getForecast from '@/app/actions/getForecast';
 import addExpenseRecord from '@/app/actions/addExpenseRecord';
-import { 
-  History, 
-  Edit3, 
-  Check, 
-  AlertCircle, 
-  CalendarClock, 
+import {
+  History,
+  Edit3,
+  Check,
+  AlertCircle,
+  CalendarClock,
   CloudOff,
   RefreshCw,
   Plus,
@@ -57,7 +57,7 @@ const RecordHistory = () => {
 
   return (
     <div className="flex flex-col w-full overflow-hidden bg-transparent">
-      
+
       {/* HEADER */}
       <div className="sticky top-0 z-20 p-5 sm:p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800/50 gap-2">
         <div className="flex items-center gap-3 min-w-0">
@@ -72,9 +72,8 @@ const RecordHistory = () => {
 
         <button
           onClick={() => setIsManageMode(!isManageMode)}
-          className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
-            isManageMode ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-          }`}
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${isManageMode ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
         >
           {isManageMode ? <Check size={12} /> : <Edit3 size={12} />}
           <span>{isManageMode ? 'Done' : 'Edit'}</span>
@@ -145,11 +144,18 @@ function UpcomingList({ onConfirm }: { onConfirm: () => void }) {
 
   const handleConfirm = async (item: any) => {
     const fd = new FormData();
-    fd.set('text', item.text);
-    fd.set('amount', String(item.amount));
+    fd.set('text', item.text || 'Predicted Expense');
+    fd.set('amount', String(item.amount || 0));
     fd.set('category', item.category || 'Other');
-    const d = new Date(item.date);
-    fd.set('date', `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`);
+
+    // Guard the date logic
+    const d = item.date ? new Date(item.date) : new Date();
+    if (isNaN(d.getTime())) {
+      console.error("Invalid date in prediction");
+      return;
+    }
+
+    fd.set('date', `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`);
     try {
       const res = await addExpenseRecord(fd);
       if (!res.error) onConfirm();
@@ -168,11 +174,12 @@ function UpcomingList({ onConfirm }: { onConfirm: () => void }) {
     <div className='grid grid-cols-1 gap-3'>
       {items.map((it) => (
         <div key={it.id} className='relative flex flex-col p-4 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/50 overflow-hidden'>
-          
+
           {/* TOP RIGHT DATE */}
           <div className="absolute top-3 right-4 text-[7px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter bg-white/50 dark:bg-slate-900/50 px-1.5 py-0.5 rounded-md">
-            {new Date(it.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </div>
+            {it.date
+              ? new Date(it.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              : 'TBD'}          </div>
 
           {/* MAIN CONTENT STACK */}
           <div className="mb-4">
@@ -180,7 +187,7 @@ function UpcomingList({ onConfirm }: { onConfirm: () => void }) {
             <div className='font-black text-slate-900 dark:text-white text-xs uppercase tracking-tight leading-tight mb-2 pr-12 truncate'>
               {it.text}
             </div>
-            
+
             {/* Category & Amount (Below) */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 bg-indigo-100/50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg shrink-0">
@@ -190,21 +197,20 @@ function UpcomingList({ onConfirm }: { onConfirm: () => void }) {
                 </span>
               </div>
               <div className="text-sm font-black text-slate-900 dark:text-white shrink-0">
-                ₱{it.amount.toLocaleString()}
-              </div>
+                ₱{(it.amount || 0).toLocaleString()}              </div>
             </div>
           </div>
-          
+
           {/* ACTIONS */}
           <div className='flex gap-2'>
-            <button 
-              onClick={() => handleConfirm(it)} 
+            <button
+              onClick={() => handleConfirm(it)}
               className='flex-1 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2'
             >
               <Plus size={12} /> Confirm
             </button>
-            <button 
-              onClick={() => { setItems((prev) => prev.filter(p => p.id !== it.id)); }} 
+            <button
+              onClick={() => { setItems((prev) => prev.filter(p => p.id !== it.id)); }}
               className='px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-400 text-[9px] font-black uppercase border border-slate-200 dark:border-slate-700 active:scale-95 transition-all'
             >
               Skip
