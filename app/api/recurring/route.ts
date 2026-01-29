@@ -21,7 +21,8 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { text, amount, category, startDate, frequency, active } = body;
+    const { text, amount, category, startDate, frequency, active, dayOfMonth } = body;
+    
     if (!text || typeof amount !== 'number' || !startDate || !frequency) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
         userId,
         text,
         amount,
+        // Fallback to 1 if dayOfMonth is missing or 0
+        dayOfMonth: Number(dayOfMonth) || 1, 
         category: category || 'Other',
         startDate: new Date(startDate),
         frequency,
@@ -51,20 +54,26 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, text, amount, category, startDate, frequency, active } = body;
+    // Added dayOfMonth to the destructured body
+    const { id, text, amount, category, startDate, frequency, active, dayOfMonth } = body;
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const existing = await db.recurringExpense.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const updated = await db.recurringExpense.update({ where: { id }, data: {
-      text: text ?? existing.text,
-      amount: typeof amount === 'number' ? amount : existing.amount,
-      category: category ?? existing.category,
-      startDate: startDate ? new Date(startDate) : existing.startDate,
-      frequency: frequency ?? existing.frequency,
-      active: typeof active === 'boolean' ? active : existing.active,
-    } });
+    const updated = await db.recurringExpense.update({ 
+      where: { id }, 
+      data: {
+        text: text ?? existing.text,
+        amount: typeof amount === 'number' ? amount : existing.amount,
+        // Update dayOfMonth here!
+        dayOfMonth: typeof dayOfMonth === 'number' ? dayOfMonth : existing.dayOfMonth,
+        category: category ?? existing.category,
+        startDate: startDate ? new Date(startDate) : existing.startDate,
+        frequency: frequency ?? existing.frequency,
+        active: typeof active === 'boolean' ? active : existing.active,
+      } 
+    });
 
     return NextResponse.json({ item: updated });
   } catch (e) {

@@ -114,52 +114,71 @@ const RecordItem = ({ record, isManageMode, onRefresh }: RecordItemProps) => {
 
   return (
     <>
-      <div className="group relative flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 rounded-[2rem] transition-all duration-300 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-600 transition-transform group-hover:scale-110">
+      <div className="group relative p-4 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 rounded-[2rem] transition-all duration-300 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 flex flex-col gap-3 overflow-hidden">
+        
+        {/* DATE - TOP RIGHT (Small Text) */}
+        <div className="absolute top-4 right-5 flex items-center gap-1">
+           <Calendar size={10} className="text-slate-300" />
+           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+             {new Date(record.date).toLocaleDateString()}
+           </span>
+        </div>
+
+        <div className="flex items-start gap-4">
+          {/* CATEGORY ICON */}
+          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center shrink-0 shadow-sm border border-slate-100 dark:border-slate-600 transition-transform group-hover:scale-110">
             {getCategoryIcon(record.category)}
           </div>
-          <div>
-            <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight">{record.text}</h4>
-            <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                <Calendar size={10} className="text-slate-300" />
-                {new Date(record.date).toLocaleDateString()}
-              </p>
-              <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{record.category}</p>
+
+          {/* CONTENT STACK */}
+          <div className="flex-1 min-w-0 pr-12">
+            {/* Description (Top) */}
+            <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight truncate uppercase leading-tight mb-2">
+              {record.text}
+            </h4>
+            
+            {/* Category & Amount Row (Bottom) */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-lg shrink-0">
+                <Tag size={10} className="text-indigo-500" />
+                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">
+                  {record.category}
+                </span>
+              </div>
+              
+              {!isManageMode && (
+                <div className="shrink-0">
+                  <span className="font-black text-slate-900 dark:text-white text-base tracking-tighter">
+                    ₱{Number(record.amount).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {!isManageMode ? (
-            <div className="text-right">
-               <span className="font-black text-slate-900 dark:text-white text-base tracking-tighter">
-                ₱{Number(record.amount).toLocaleString()}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3">
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-90"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                disabled={isDeleting}
-                onClick={handleDelete}
-                className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-90"
-              >
-                {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-              </button>
-            </div>
-          )}
-        </div>
+        {/* MANAGE MODE ACTIONS (Shown below on mobile/edit mode) */}
+        {isManageMode && (
+          <div className="flex items-center gap-2 mt-1 pt-3 border-t border-slate-100 dark:border-slate-700/50 animate-in fade-in slide-in-from-top-2">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+            >
+              <Pencil size={12} /> Edit
+            </button>
+            <button
+              disabled={isDeleting}
+              onClick={handleDelete}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all active:scale-95"
+            >
+              {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* EDIT MODAL */}
+      {/* EDIT MODAL remains the same */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setIsEditModalOpen(false)} />

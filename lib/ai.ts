@@ -42,22 +42,32 @@ const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
   defaultHeaders: {
-    'HTTP-Referer':
-      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     'X-Title': 'SmartJuanPeso AI',
   },
 });
 
-/* ================= UTILITIES ================= */
+/* ================= 2026 STABLE FREE MODEL CONFIG ================= */
 
-function isRateLimitError(error: unknown): error is { code: number } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code: unknown }).code === 'number'
-  );
-}
+// Using Gemini 2.0 Flash as primary because it is the most stable free vision/text model
+const PRIMARY_MODEL = [
+  'google/gemini-2.0-flash-001', 
+  'google/gemini-2.0-flash-lite-preview-02-05:free'
+];
+
+// Fallbacks specifically labeled ":free" to avoid 402 Payment errors
+const TEXT_FALLBACKS = [
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'mistralai/mistral-7b-instruct:free',
+  'microsoft/phi-3-medium-128k-instruct:free'
+];
+
+const VISION_FALLBACKS = [
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'qwen/qwen-2.5-vl-7b-instruct:free'
+];
+
+/* ================= UTILITIES ================= */
 
 function normalizeInsightType(value: unknown): InsightType {
   if (typeof value === 'string' && INSIGHT_TYPES.includes(value as InsightType)) {
@@ -66,22 +76,20 @@ function normalizeInsightType(value: unknown): InsightType {
   return 'info';
 }
 
-// Helper function to wait
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries = 3) {
+export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries = 2) {
   for (let i = 0; i < retries; i++) {
     try {
       return await requestFn();
     } catch (error: any) {
-      // If we hit a 429 error and have retries left...
+      // Handle Rate Limits (429) or temporary outages
       if (error.status === 429 && i < retries - 1) {
-        const waitTime = Math.pow(2, i) * 1000; // Wait 1s, then 2s, then 4s
-        console.warn(`⚠️ Rate limited. Retrying in ${waitTime}ms...`);
+        const waitTime = Math.pow(2, i) * 2000;
         await delay(waitTime);
         continue;
       }
-      throw error; // If not a 429 or no retries left, crash normally
+      throw error;
     }
   }
 }
@@ -90,213 +98,150 @@ export async function safeOpenAIRequest(requestFn: () => Promise<any>, retries =
 
 function localCategorize(description: string): string {
   const text = description.toLowerCase();
-
-  if (/food|restaurant|snack|meal|eat|lunch|dinner/.test(text)) return 'Food';
-  if (/gas|grab|jeep|bus|taxi|train|commute|transport/.test(text))
-    return 'Transportation';
-  if (/movie|netflix|game|music|concert|fun|play/.test(text))
-    return 'Entertainment';
-  if (/shop|mall|clothes|shoes|gadget|buy|purchase/.test(text))
-    return 'Shopping';
-  if (/bill|electric|water|internet|rent|subscription/.test(text))
-    return 'Bills';
-  if (/hospital|medicine|doctor|clinic|health/.test(text))
-    return 'Healthcare';
-
+  if (/food|restaurant|snack|meal|eat|lunch|dinner|coffee|bakery/.test(text)) return 'Food';
+  if (/gas|grab|jeep|bus|taxi|train|commute|transport|angkas|joyride/.test(text)) return 'Transportation';
+  if (/bill|electric|water|internet|rent|meralco|pldt|globe|smart/.test(text)) return 'Bills';
+  if (/movie|netflix|game|music|concert|fun|hobby/.test(text)) return 'Entertainment';
+  if (/hospital|medicine|doctor|clinic|health|drugstore/.test(text)) return 'Healthcare';
   return 'Other';
 }
 
 /* ================= AI INSIGHTS ================= */
 
-export async function generateExpenseInsights(
-  expenses: ExpenseRecord[]
-): Promise<AIInsight[]> {
+export async function generateExpenseInsights(expenses: ExpenseRecord[]): Promise<AIInsight[]> {
   try {
-    const summary = expenses.map(e => ({
+    const summary = expenses.slice(0, 15).map(e => ({
       amount: e.amount,
       category: e.category,
       description: e.description,
-      date: e.date,
     }));
 
-    const prompt = `Analyze the following expense data and provide 3-4 actionable financial insights.
-Return ONLY a JSON array using:
-{
-  "type": "warning|info|success|tip",
-  "title": "Brief title",
-  "message": "Detailed insight",
-  "action": "Suggestion",
-  "confidence": 0.8
-}
+    const completion = await openai.chat.completions.create({
+      model: PRIMARY_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a Filipino Financial Advisor. You MUST respond with a JSON array of objects. Each object MUST have these exact keys: "type", "title", "message", "action", "confidence". Do not include <think> tags or markdown.'
+        },
+        { role: 'user', content: `Analyze these 2026 expenses and give 3 insights: ${JSON.stringify(summary)}` },
+      ],
+      max_tokens: 600,
+      temperature: 0.7,
+      extra_body: {
+        "models": TEXT_FALLBACKS,
+        "route": "fallback"
+      }
+    } as any);
 
-Expense Data:
-${JSON.stringify(summary, null, 2)}`;
+    const content = completion.choices[0].message.content || '[]';
+    const cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```json\s*|```$/g, '').trim();
 
-    const completion = await safeOpenAIRequest(() =>
-      openai.chat.completions.create({
-        model: 'deepseek/deepseek-chat-v3-0324',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a financial advisor AI. Respond with valid JSON only.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-      })
-    );
+    // Parse the JSON
+    const rawData = JSON.parse(cleaned);
 
-    const content = completion.choices[0].message.content;
-    if (!content) throw new Error('No response from AI');
+    // ENSURE ARRAY: If AI returns a single object instead of an array
+    const rawInsights = Array.isArray(rawData) ? rawData : [rawData];
 
-    const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
-    const insights: RawInsight[] = JSON.parse(cleaned);
+    return rawInsights.map((insight: any, i: number): AIInsight => {
+      // FLEXIBLE MAPPING: This catches the AI if it uses the wrong property names
+      const title = insight.title || insight.headline || 'Financial Insight';
+      const message = insight.message || insight.insight || insight.description || insight.text || 'Analysis complete';
+      const action = insight.action || insight.suggestion || insight.recommendation || 'View details';
 
-    return insights.map((insight, index): AIInsight => ({
-      id: `ai-${Date.now()}-${index}`,
-      type: normalizeInsightType(insight.type),
-      title: typeof insight.title === 'string' ? insight.title : 'AI Insight',
-      message: typeof insight.message === 'string' ? insight.message : 'Analysis complete',
-      action: typeof insight.action === 'string' ? insight.action : undefined,
-      confidence: typeof insight.confidence === 'number' ? insight.confidence : 0.8,
-    }));
-  } catch (error: unknown) {
-    console.error('❌ Error generating AI insights:', error);
-    return [
-      {
-        id: 'fallback-1',
-        type: 'info',
-        title: 'AI Analysis Unavailable',
-        message:
-          'Unable to generate personalized insights at this time. Please try again later.',
-        action: 'Refresh insights',
-        confidence: 0.5,
-      },
-    ];
+      return {
+        id: `ai-${Date.now()}-${i}`,
+        type: normalizeInsightType(insight.type),
+        title: title,
+        message: message,
+        action: action,
+        confidence: insight.confidence || 0.9,
+      };
+    });
+  } catch (error) {
+    console.error('AI Insight Error:', error);
+    return [{
+      id: 'err',
+      type: 'info',
+      title: 'AI Busy',
+      message: 'Models are at capacity. Please click Sync Data again.',
+      confidence: 0.5
+    }];
   }
 }
-
 /* ================= CATEGORIZATION ================= */
 
-export async function categorizeExpense(
-  description: string
-): Promise<string> {
+export async function categorizeExpense(description: string): Promise<string> {
   try {
-    const completion = await safeOpenAIRequest(() =>
-      openai.chat.completions.create({
-        model: 'deepseek/deepseek-chat-v3-0324',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Categorize into: Food, Transportation, Entertainment, Shopping, Bills, Healthcare, Other.',
-          },
-          { role: 'user', content: `Categorize: "${description}"` },
-        ],
-        temperature: 0.1,
-        max_tokens: 20,
-      })
-    );
+    const completion = await openai.chat.completions.create({
+      model: PRIMARY_MODEL,
+      messages: [
+        { role: 'system', content: 'Output one word category: Food, Transportation, Entertainment, Shopping, Bills, Healthcare, or Other.' },
+        { role: 'user', content: description },
+      ],
+      max_tokens: 15,
+      extra_body: { "models": TEXT_FALLBACKS, "route": "fallback" }
+    } as any);
 
     const category = completion.choices[0].message.content?.trim();
-    return category ? category : localCategorize(description);
-  } catch (error: unknown) {
-    console.error('❌ Error categorizing expense:', error);
+    return category || localCategorize(description);
+  } catch {
     return localCategorize(description);
   }
 }
 
 /* ================= Q&A ================= */
 
-export async function generateAIAnswer(
-  question: string,
-  context: ExpenseRecord[]
-): Promise<string> {
+export async function generateAIAnswer(question: string, context: ExpenseRecord[]): Promise<string> {
   try {
-    const summary = context.map(e => ({
+    const summary = context.slice(0, 10).map(e => ({
       amount: e.amount,
-      category: e.category,
       description: e.description,
-      date: e.date,
+      category: e.category
     }));
 
-    const prompt = `Answer the question using the expense data below.
+    const completion = await openai.chat.completions.create({
+      model: PRIMARY_MODEL,
+      messages: [
+        { role: 'system', content: 'You are a helpful Pinoy financial assistant. Be very concise.' },
+        { role: 'user', content: `Question: ${question} Data: ${JSON.stringify(summary)}` },
+      ],
+      max_tokens: 250,
+      extra_body: { "models": TEXT_FALLBACKS, "route": "fallback" }
+    } as any);
 
-Question:
-"${question}"
-
-Expense Data:
-${JSON.stringify(summary, null, 2)}
-
-Respond in 2–3 sentences.`;
-
-    const completion = await safeOpenAIRequest(() =>
-      openai.chat.completions.create({
-        model: 'deepseek/deepseek-chat-v3-0324',
-        messages: [
-          { role: 'system', content: 'You are a concise financial advisor.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 200,
-      })
-    );
-
-    return completion.choices[0].message.content?.trim() ?? '';
-  } catch (error: unknown) {
-    console.error('❌ Error generating AI answer:', error);
-    return 'Unable to answer at the moment. Please try again later.';
+    return completion.choices[0].message.content?.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || 'No response.';
+  } catch {
+    return 'The AI assistant is taking a break. Please try again in a minute.';
   }
 }
+
 /* ================= RECEIPT SCANNING ================= */
-const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export async function analyzeReceiptImage(base64Image: string, mimeType: string) {
-  const models = [
-    'google/gemini-2.0-flash-exp:free',
-    'qwen/qwen-2.5-vl-7b-instruct:free',
-    'google/gemini-2.0-pro-exp-02-05:free'
-  ];
-
-  let lastError: any = null;
-
-  for (const modelId of models) {
-    // Attempt the model twice with a delay if rate limited
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const completion = await openai.chat.completions.create({
-          model: modelId,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: "Extract to JSON: {amount: number, description: string, category: string}" },
-                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
-              ],
-            },
+  try {
+    const completion = await openai.chat.completions.create({
+      model: PRIMARY_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: "Extract receipt to JSON: {amount: number, description: string, category: string}. Return only JSON." },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
           ],
-          temperature: 0.1,
-          max_tokens: 500,
-        });
-
-        if (completion?.choices?.[0]?.message?.content) {
-          const content = completion.choices[0].message.content;
-          const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
-          return JSON.parse(cleaned);
-        }
-      } catch (error: any) {
-        lastError = error;
-        // If 429, sleep and try one more time for this specific model
-        if (error?.status === 429 && attempt === 1) {
-          await sleep(3000); // 3 seconds is safer for free tier
-          continue;
-        }
-        break; // Move to next model if it's not a temporary 429
+        },
+      ],
+      max_tokens: 400,
+      extra_body: {
+        "models": VISION_FALLBACKS,
+        "route": "fallback"
       }
-    }
-  }
+    } as any);
 
-  throw new Error("AI services are currently congested. Please wait 10 seconds and try again.");
+    const content = completion.choices[0].message.content || '';
+    const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (error) {
+    console.error("Vision Error:", error);
+    throw new Error("AI services are currently congested. Please try again.");
+  }
 }

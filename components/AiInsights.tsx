@@ -4,17 +4,18 @@ import { useState, useEffect } from 'react';
 import { getAIInsights } from '@/app/actions/getAIInsights';
 import { generateInsightAnswer } from '@/app/actions/generateInsightAnswer';
 import { useToast } from '@/components/ToastProvider';
-import { 
-  Sparkles, 
-  RefreshCcw, 
-  Mail, 
-  AlertTriangle, 
-  Lightbulb, 
-  CheckCircle2, 
-  Info, 
-  ChevronRight, 
+import {
+  Sparkles,
+  RefreshCcw,
+  Mail,
+  AlertTriangle,
+  Lightbulb,
+  CheckCircle2,
+  Info,
+  ChevronRight,
   Bot,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 
 interface InsightData {
@@ -114,7 +115,50 @@ const AIInsights = () => {
     return diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
   };
 
-  if (isLoading) return <div className="h-64 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-[2.5rem]" />;
+  /* --- STYLIZED LOADING STATE --- */
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center p-8 sm:p-12 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] shadow-xl min-h-[450px] w-full">
+      <div className="flex flex-col items-center text-center">
+        {/* Animated Icon Container */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse"></div>
+          <div className="relative w-24 h-24 bg-indigo-600 rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-indigo-500/40">
+            <Bot className="text-white animate-bounce" size={48} />
+          </div>
+        </div>
+
+        {/* Text Messaging */}
+        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">
+          Analyzing Patterns
+        </h3>
+        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] animate-pulse mb-10">
+          Syncing SmartJuan Ledger...
+        </p>
+
+        {/* Fixed Progress Bar */}
+        <div className="w-64 space-y-4">
+          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
+            {/* This is the moving progress indicator */}
+            <div className="absolute top-0 left-0 h-full bg-indigo-500 w-1/3 rounded-full animate-[loading_1.5s_infinite_ease-in-out]"></div>
+          </div>
+
+          <div className="flex justify-between items-center px-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Neural Link</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Processing</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tailwind Custom Animation Style */}
+      <style jsx global>{`
+        @keyframes loading {
+          0% { left: -40%; width: 30%; }
+          50% { width: 60%; }
+          100% { left: 110%; width: 30%; }
+        }
+      `}</style>
+    </div>
+  );
 
   return (
     <div className='bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800'>
@@ -132,14 +176,14 @@ const AIInsights = () => {
             </div>
           </div>
         </div>
-        
+
         <div className='flex items-center gap-2'>
-           <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-700">
-             {formatLastUpdated()}
-           </div>
-           <button onClick={loadInsights} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors">
-             <RefreshCcw size={18} />
-           </button>
+          <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-700">
+            {formatLastUpdated()}
+          </div>
+          <button onClick={loadInsights} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors">
+            <RefreshCcw size={18} />
+          </button>
         </div>
       </div>
 

@@ -12,10 +12,10 @@ import {
   Check, 
   AlertCircle, 
   CalendarClock, 
-  ChevronRight, 
   CloudOff,
   RefreshCw,
-  Plus
+  Plus,
+  Tag
 } from 'lucide-react';
 
 const RecordHistory = () => {
@@ -48,70 +48,60 @@ const RecordHistory = () => {
 
   if (loading) {
     return (
-      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+      <div className="p-12 text-center bg-transparent">
         <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-4" />
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Synchronizing Ledger...</p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Ledger...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] flex flex-col overflow-hidden transition-all duration-500 border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none">
+    <div className="flex flex-col w-full overflow-hidden bg-transparent">
       
-      {/* HEADER: Glassmorphism Sticky */}
-      <div className="sticky top-0 z-20 p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between border-b border-slate-50 dark:border-slate-800/50">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 dark:bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group">
-            <History className="text-white group-hover:rotate-[-45deg] transition-transform" size={20} />
+      {/* HEADER */}
+      <div className="sticky top-0 z-20 p-5 sm:p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800/50 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 bg-slate-900 dark:bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+            <History className="text-white" size={18} />
           </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">History</h3>
-            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">Full Audit Trail</p>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter truncate">History</h3>
+            <p className="text-[8px] sm:text-[10px] font-black text-indigo-500 uppercase tracking-widest truncate">Audit Trail</p>
           </div>
         </div>
 
         <button
           onClick={() => setIsManageMode(!isManageMode)}
-          className={`group flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-            isManageMode
-              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-indigo-600 hover:text-white'
+          className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
+            isManageMode ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}
         >
-          {isManageMode ? <Check size={14} /> : <Edit3 size={14} />}
-          <span>{isManageMode ? 'Save Changes' : 'Manage'}</span>
+          {isManageMode ? <Check size={12} /> : <Edit3 size={12} />}
+          <span>{isManageMode ? 'Done' : 'Edit'}</span>
         </button>
       </div>
 
-      <div className="p-4 sm:p-6 max-h-[600px] overflow-y-auto custom-scrollbar">
+      <div className="p-3 sm:p-6 max-h-[500px] sm:max-h-[600px] overflow-y-auto custom-scrollbar">
         {/* SECTION: UPCOMING FORECAST */}
-        <div className='mb-10'>
-          <div className="flex items-center gap-2 mb-4 px-2">
+        <div className='mb-6 sm:mb-8'>
+          <div className="flex items-center gap-2 mb-4 px-1">
             <CalendarClock size={14} className="text-indigo-500" />
-            <h4 className='text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]'>Predicted Events</h4>
+            <h4 className='text-[9px] font-black uppercase text-slate-400 tracking-widest'>Predictions</h4>
           </div>
           <UpcomingList onConfirm={fetchRecords} />
         </div>
 
-        {/* ERROR STATE */}
-        {error && (
-          <div className="mb-6 mx-2 bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-100 dark:border-red-800 flex items-center gap-3 text-red-600 dark:text-red-400">
-            <AlertCircle size={18} />
-            <p className="text-xs font-bold uppercase tracking-tight">{error}</p>
-          </div>
-        )}
-
         {/* LIST VIEW */}
-        <div className="px-2 pb-6">
+        <div className="px-1 pb-4">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
-            <h4 className='text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]'>Past Transactions</h4>
+            <div className="w-1 h-3 bg-indigo-500 rounded-full"></div>
+            <h4 className='text-[9px] font-black uppercase text-slate-400 tracking-widest'>Transactions</h4>
           </div>
 
           {records.length === 0 ? (
-            <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/30 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
-              <CloudOff className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 font-black text-xs uppercase tracking-widest">No transaction data</p>
+            <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800">
+              <CloudOff className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-400 font-black text-[9px] uppercase">Empty</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -127,9 +117,6 @@ const RecordHistory = () => {
           )}
         </div>
       </div>
-
-      {/* BLEND BOTTOM */}
-      <div className="h-8 bg-gradient-to-t from-white dark:from-slate-900 to-transparent pointer-events-none absolute bottom-0 w-full" />
     </div>
   );
 };
@@ -170,39 +157,55 @@ function UpcomingList({ onConfirm }: { onConfirm: () => void }) {
   };
 
   if (loading) return (
-    <div className='p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] animate-pulse flex items-center justify-center'>
+    <div className='p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl animate-pulse flex items-center justify-center'>
       <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
-  if (!items || items.length === 0) return (
-    <div className='p-6 text-center bg-slate-50 dark:bg-slate-800/20 rounded-[2rem] border border-slate-100 dark:border-slate-800'>
-      <p className='text-[10px] font-black text-slate-400 uppercase tracking-widest'>All caught up</p>
-    </div>
-  );
+  if (!items || items.length === 0) return null;
 
   return (
-    <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+    <div className='grid grid-cols-1 gap-3'>
       {items.map((it) => (
-        <div key={it.id} className='group flex flex-col p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100/50 dark:border-indigo-900/30 hover:bg-white dark:hover:bg-slate-800 transition-all'>
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <div className='font-black text-slate-900 dark:text-white text-xs uppercase tracking-tight'>{it.text}</div>
-              <div className='text-[10px] font-bold text-indigo-500 uppercase mt-0.5'>Due {new Date(it.date).toLocaleDateString()}</div>
+        <div key={it.id} className='relative flex flex-col p-4 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100/50 dark:border-indigo-800/50 overflow-hidden'>
+          
+          {/* TOP RIGHT DATE */}
+          <div className="absolute top-3 right-4 text-[7px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter bg-white/50 dark:bg-slate-900/50 px-1.5 py-0.5 rounded-md">
+            {new Date(it.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          </div>
+
+          {/* MAIN CONTENT STACK */}
+          <div className="mb-4">
+            {/* Description (Top) */}
+            <div className='font-black text-slate-900 dark:text-white text-xs uppercase tracking-tight leading-tight mb-2 pr-12 truncate'>
+              {it.text}
             </div>
-            <div className="text-sm font-black text-slate-900 dark:text-white">₱{it.amount}</div>
+            
+            {/* Category & Amount (Below) */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 bg-indigo-100/50 dark:bg-indigo-900/40 px-2 py-0.5 rounded-lg shrink-0">
+                <Tag size={10} className="text-indigo-600 dark:text-indigo-400" />
+                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                  {it.category || 'General'}
+                </span>
+              </div>
+              <div className="text-sm font-black text-slate-900 dark:text-white shrink-0">
+                ₱{it.amount.toLocaleString()}
+              </div>
+            </div>
           </div>
           
-          <div className='flex gap-2 mt-auto'>
+          {/* ACTIONS */}
+          <div className='flex gap-2'>
             <button 
               onClick={() => handleConfirm(it)} 
-              className='flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all'
+              className='flex-1 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2'
             >
               <Plus size={12} /> Confirm
             </button>
             <button 
               onClick={() => { setItems((prev) => prev.filter(p => p.id !== it.id)); }} 
-              className='px-3 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-400 text-[9px] font-black uppercase border border-slate-100 dark:border-slate-700 hover:text-red-500 transition-all'
+              className='px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-400 text-[9px] font-black uppercase border border-slate-200 dark:border-slate-700 active:scale-95 transition-all'
             >
               Skip
             </button>

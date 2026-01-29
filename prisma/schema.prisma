@@ -65,16 +65,13 @@ model RecurringExpense {
   userId String
   user User @relation(fields: [userId], references: [clerkUserId], onDelete: Cascade)
   text String
-  // `amount` is treated as an estimated/default amount. For variable bills set `isVariable` to true.
   amount Float
   category String @default("Other")
   startDate DateTime
-  frequency String // e.g. 'monthly', 'weekly', 'yearly'
-  // Next due date used by scheduler (optional)
+  dayOfMonth   Int       @default(1) 
+  frequency String
   nextDueDate DateTime?
-  // status: 'active' | 'paused'
   status String @default("active")
-  // If true, `amount` is an estimate and actual amounts may vary. `lastAmount` can store last observed.
   isVariable Boolean @default(false)
   lastAmount Float?
   active Boolean @default(true)

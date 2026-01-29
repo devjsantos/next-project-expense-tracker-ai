@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Settings2, Check, Pencil, Trash2, PauseCircle, PlayCircle, Calendar, CreditCard } from 'lucide-react';
+import { Plus, Settings2, Check, Pencil, Trash2, PauseCircle, PlayCircle, Calendar, CreditCard, Hash } from 'lucide-react';
 
 type Recurring = {
   id: string;
@@ -9,6 +9,7 @@ type Recurring = {
   amount: number;
   category: string;
   startDate: string;
+  dayOfMonth: number;
   frequency: string;
   active: boolean;
 };
@@ -21,7 +22,13 @@ export default function RecurringExpenses() {
   const [editingItem, setEditingItem] = useState<Recurring | null>(null);
 
   const [form, setForm] = useState({
-    text: '', amount: '', category: 'Bills', startDate: new Date().toISOString().split('T')[0], frequency: 'monthly', active: true
+    text: '',
+    amount: '',
+    category: 'Bills',
+    startDate: new Date().toISOString().split('T')[0],
+    dayOfMonth: new Date().getDate(),
+    frequency: 'monthly',
+    active: true
   });
 
   const fetchItems = useCallback(async () => {
@@ -43,12 +50,12 @@ export default function RecurringExpenses() {
       return acc + curr.amount;
     }, 0);
 
-  // --- START OF LOGIC BLOCK ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       ...form,
       amount: parseFloat(form.amount),
+      dayOfMonth: Number(form.dayOfMonth),
       nextDueDate: new Date(form.startDate).toISOString(),
     };
 
@@ -62,7 +69,12 @@ export default function RecurringExpenses() {
       if (json.item) {
         setItems(prev => [json.item, ...prev]);
         setIsAddModalOpen(false);
-        setForm({ text: '', amount: '', category: 'Bills', startDate: new Date().toISOString().split('T')[0], frequency: 'monthly', active: true });
+        setForm({
+          text: '', amount: '', category: 'Bills',
+          startDate: new Date().toISOString().split('T')[0],
+          dayOfMonth: new Date().getDate(),
+          frequency: 'monthly', active: true
+        });
       }
     } catch (e) { console.error(e); }
   };
@@ -73,6 +85,7 @@ export default function RecurringExpenses() {
 
     const updatedPayload = {
       ...editingItem,
+      dayOfMonth: Number(editingItem.dayOfMonth),
       nextDueDate: new Date(editingItem.startDate).toISOString(),
     };
 
@@ -110,9 +123,14 @@ export default function RecurringExpenses() {
     } catch (e) { console.error(e); }
   };
 
+  const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
   return (
     <div className='bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-200/60 dark:border-slate-800 overflow-hidden max-w-2xl mx-auto'>
-      {/* Header & Total Summary */}
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -123,16 +141,10 @@ export default function RecurringExpenses() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all"
-            >
+            <button onClick={() => setIsAddModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all">
               <Plus size={20} strokeWidth={3} />
             </button>
-            <button
-              onClick={() => setIsManageMode(!isManageMode)}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${isManageMode ? 'bg-slate-900 text-white border-slate-900' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}
-            >
+            <button onClick={() => setIsManageMode(!isManageMode)} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${isManageMode ? 'bg-slate-900 text-white border-slate-900' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'}`}>
               {isManageMode ? <Check size={18} /> : <Settings2 size={18} />}
             </button>
           </div>
@@ -156,9 +168,8 @@ export default function RecurringExpenses() {
           {items.map(item => (
             <div key={item.id} className='group flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900 rounded-2xl transition-all'>
               <div className="flex items-center gap-4 min-w-0">
-                {/* Scaled down the initial circle */}
-                <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all ${item.active ? 'bg-indigo-50 dark:bg-slate-700 text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-400 opacity-60'}`}>
-                  {item.frequency.charAt(0).toUpperCase()}
+                <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-all ${item.active ? 'bg-indigo-50 dark:bg-slate-700 text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-400 opacity-60'}`}>
+                  {item.dayOfMonth || item.frequency.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="min-w-0">
@@ -167,6 +178,9 @@ export default function RecurringExpenses() {
                   </div>
                   <div className='flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase mt-0.5'>
                     <span className={item.active ? "text-indigo-500" : ""}>₱{item.amount.toLocaleString()}</span>
+                    <span className="opacity-30">•</span>
+                    {/* Add a fallback check for 0 or undefined */}
+                    <span>Every {item.dayOfMonth > 0 ? getOrdinal(item.dayOfMonth) : getOrdinal(1)}</span>
                     <span className="opacity-30">•</span>
                     <span>{item.frequency}</span>
                   </div>
@@ -197,10 +211,9 @@ export default function RecurringExpenses() {
         </div>
       </div>
 
-      {/* Reusable Modal logic remains the same but with refined padding */}
       {(isAddModalOpen || editingItem) && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm p-8 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm p-8 rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl flex items-center justify-center">
                 <Calendar size={20} />
@@ -229,22 +242,41 @@ export default function RecurringExpenses() {
                     type="number"
                     className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm"
                     value={editingItem ? editingItem.amount : form.amount}
-                    onChange={e => editingItem ? setEditingItem({ ...editingItem, amount: parseFloat(e.target.value) }) : setForm({ ...form, amount: e.target.value })}
+                    onChange={e => editingItem ? setEditingItem({ ...editingItem, amount: parseFloat(e.target.value) || 0 }) : setForm({ ...form, amount: e.target.value })}
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Cycle</label>
-                  <select
-                    className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm appearance-none"
-                    value={editingItem ? editingItem.frequency : form.frequency}
-                    onChange={e => editingItem ? setEditingItem({ ...editingItem, frequency: e.target.value }) : setForm({ ...form, frequency: e.target.value })}
-                  >
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Due Day (1-31)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm"
+                      value={editingItem ? (editingItem.dayOfMonth || '') : (form.dayOfMonth || '')}
+                      onChange={e => {
+                        const val = parseInt(e.target.value) || 0;
+                        editingItem ? setEditingItem({ ...editingItem, dayOfMonth: val }) : setForm({ ...form, dayOfMonth: val });
+                      }}
+                      required
+                    />
+                    <Hash size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase mb-1.5 block tracking-widest">Cycle</label>
+                <select
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-xl font-bold outline-none text-sm appearance-none"
+                  value={editingItem ? editingItem.frequency : form.frequency}
+                  onChange={e => editingItem ? setEditingItem({ ...editingItem, frequency: e.target.value }) : setForm({ ...form, frequency: e.target.value })}
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
               </div>
 
               <div className="flex gap-3 pt-4">
