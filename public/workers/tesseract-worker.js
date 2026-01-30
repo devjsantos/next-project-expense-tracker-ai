@@ -1,41 +1,15 @@
-// Simple Tesseract worker using CDN importScripts
-// Listens for messages: { id, dataUrl }
-// Posts progress messages: { type: 'progress', progress: { status, progress } }
-// Posts result messages: { type: 'result', text }
+importScripts('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
 
-self.onmessage = async function (e) {
-  const { id, dataUrl } = e.data || {};
+self.onmessage = async (e) => {
+  const { image } = e.data;
   try {
-    // Load tesseract from CDN if not present
-    if (typeof importScripts === 'function') {
-      try {
-        importScripts('https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js');
-      } catch (err) {
-        // ignore
-      }
-    }
-
-    const Tesseract = self.Tesseract || (typeof window !== 'undefined' ? window.Tesseract : null);
-    if (!Tesseract) {
-      postMessage({ type: 'error', error: 'Tesseract not available in worker.' });
-      return;
-    }
-
-    const worker = Tesseract.createWorker({
-      logger: (m) => {
-        postMessage({ type: 'progress', progress: m });
-      },
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => self.postMessage({ type: 'progress', progress: m })
     });
-
-    await worker.load();
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
-
-    const { data: { text } } = await worker.recognize(dataUrl);
+    const { data: { text } } = await worker.recognize(image);
     await worker.terminate();
-
-    postMessage({ type: 'result', text, id });
-  } catch (err) {
-    postMessage({ type: 'error', error: String(err), id });
+    self.postMessage({ type: 'result', text });
+  } catch (error) {
+    self.postMessage({ type: 'error', error: error.message });
   }
 };

@@ -14,6 +14,7 @@ export async function suggestCategory(
     }
 
     const category = await categorizeExpense(description.trim());
+    console.log("AI Suggested:", category);
     return { category };
   } catch (error) {
     console.error('❌ Error in suggestCategory server action:', error);

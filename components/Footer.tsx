@@ -32,8 +32,8 @@ const Footer = () => {
                   src="/logo/logo.png" 
                   alt="SmartJuanPeso Logo" 
                   fill 
+                  sizes="40px"
                   className="object-contain"
-                  priority
                 />
               </div>
               <h2 className='text-2xl font-black tracking-tighter uppercase text-slate-900 dark:text-white'>

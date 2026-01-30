@@ -47,7 +47,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    /* Fixed ClerkProvider: Added telemetry={false} to stop 404 POST /budgets error */
+    <ClerkProvider telemetry={false}>
       <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head>
           <script
