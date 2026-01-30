@@ -11,8 +11,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
-import NotificationCenter from '@/components/NotificationCenter';
-import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail, Cpu } from 'lucide-react';
+import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -24,19 +23,10 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const notificationRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Close mobile menu helper
+  const closeMenu = () => setIsMobileMenuOpen(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -50,16 +40,11 @@ export default function Navbar() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
-
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
       setDeferredPrompt(null);
       setShowInstall(false);
-    } else {
-      console.log('User dismissed the install prompt');
     }
   };
 
@@ -98,8 +83,8 @@ export default function Navbar() {
                 src="/logo/logo.png"
                 alt="SmartJuanPeso AI Logo"
                 fill
+                sizes="40px"
                 className="object-contain"
-                priority
               />
             </div>
             <span className="font-black text-lg tracking-tighter text-slate-900 dark:text-white hidden sm:block">
@@ -107,10 +92,10 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Nav - User Friendly Labels */}
+          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1 bg-slate-100/50 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
             <NavLink
-              href="/dashboard" // Changed from {isSignedIn ? "/dashboard" : "/"}
+              href={isSignedIn ? "/dashboard" : "/"}
               icon={<LayoutDashboard size={16} />}
               label={isSignedIn ? "Dashboard" : "Home"}
             />
@@ -128,7 +113,6 @@ export default function Navbar() {
           <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
 
-            {/* FIXED: Install Button - Visible on mobile/tablet now */}
             {showInstall && (
               <button
                 onClick={handleInstallClick}
@@ -140,7 +124,6 @@ export default function Navbar() {
             )}
 
             <SignedIn>
-              {/* ... (Notifications logic) */}
               <div className="pl-2 border-l border-slate-200 dark:border-slate-800 ml-1">
                 <UserButton afterSignOutUrl="/" />
               </div>
@@ -154,31 +137,51 @@ export default function Navbar() {
               </SignInButton>
             </SignedOut>
 
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600">
+            {/* Toggle Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors"
+            >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu - User Friendly Labels */}
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2">
-          <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest">
+        <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+          <Link
+            href={isSignedIn ? "/dashboard" : "/"}
+            onClick={closeMenu}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
+          >
             <LayoutDashboard size={18} /> {isSignedIn ? "Dashboard" : "Home"}
           </Link>
 
           <SignedOut>
-            <Link href="/about" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest">
+            <Link
+              href="/about"
+              onClick={closeMenu}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
+            >
               <Info size={18} /> How it Works
             </Link>
-            <Link href="/contact" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest">
+            <Link
+              href="/contact"
+              onClick={closeMenu}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
+            >
               <Mail size={18} /> Help
             </Link>
           </SignedOut>
 
           <SignedIn>
-            <Link href="/budget" className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest">
+            <Link
+              href="/budget"
+              onClick={closeMenu}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
+            >
               <Wallet size={18} /> Budgeting
             </Link>
           </SignedIn>

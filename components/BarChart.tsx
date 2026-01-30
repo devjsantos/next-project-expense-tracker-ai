@@ -11,223 +11,159 @@ import {
   Legend,
 } from 'chart.js';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Calendar, Filter } from 'lucide-react';
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// Define the type for a record
 interface Record {
-  date: string; // ISO date string
-  amount: number; // Amount spent
-  category: string; // Expense category
+  date: string;
+  amount: number;
+  category: string;
 }
+
+type TimeRange = '7d' | '30d' | 'all';
 
 const BarChart = ({ records }: { records: Record[] }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const [windowWidth, setWindowWidth] = useState(1024); // Default to desktop width
+  const [range, setRange] = useState<TimeRange>('7d');
+  const [windowWidth, setWindowWidth] = useState(1024);
 
   useEffect(() => {
-    // Set initial window width
     setWindowWidth(window.innerWidth);
-
-    // Add resize listener
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
+    const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const isMobile = windowWidth < 640;
 
-  // Aggregate expenses by date
-  const aggregateByDate = (records: Record[]) => {
-    const dateMap = new Map<
-      string,
-      { total: number; categories: string[]; originalDate: string }
-    >();
+  // 1. FILTER & AGGREGATE LOGIC
+  const processedData = useMemo(() => {
+    const now = new Date();
+    const dateMap = new Map<string, { total: number; categories: string[]; originalDate: Date }>();
 
-    records.forEach((record) => {
-      // Parse the date string properly and extract just the date part (YYYY-MM-DD)
+    // Filter records based on selected range
+    const filteredRecords = records.filter((r) => {
+      const recordDate = new Date(r.date);
+      if (range === '7d') return (now.getTime() - recordDate.getTime()) / (1000 * 3600 * 24) <= 7;
+      if (range === '30d') return (now.getTime() - recordDate.getTime()) / (1000 * 3600 * 24) <= 30;
+      return true;
+    });
+
+    filteredRecords.forEach((record) => {
       const dateObj = new Date(record.date);
-      // Use UTC methods to avoid timezone issues
-      const year = dateObj.getUTCFullYear();
-      const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getUTCDate()).padStart(2, '0');
-      const dateKey = `${year}-${month}-${day}`;
+      const dateKey = dateObj.toISOString().split('T')[0];
       const existing = dateMap.get(dateKey);
 
       if (existing) {
         existing.total += record.amount;
-        if (!existing.categories.includes(record.category)) {
-          existing.categories.push(record.category);
-        }
+        if (!existing.categories.includes(record.category)) existing.categories.push(record.category);
       } else {
-        dateMap.set(dateKey, {
-          total: record.amount,
-          categories: [record.category],
-          originalDate: record.date, // Keep original ISO date for sorting
-        });
+        dateMap.set(dateKey, { total: record.amount, categories: [record.category], originalDate: dateObj });
       }
     });
 
-    // Convert to array and sort by date (oldest to newest)
-    return Array.from(dateMap.entries())
-      .map(([date, data]) => ({
-        date,
-        amount: data.total,
-        categories: data.categories,
-        originalDate: data.originalDate,
-      }))
-      .sort(
-        (a, b) =>
-          new Date(a.originalDate).getTime() -
-          new Date(b.originalDate).getTime()
-      );
-  };
+    const sorted = Array.from(dateMap.entries())
+      .map(([date, data]) => ({ date, amount: data.total, categories: data.categories, originalDate: data.originalDate }))
+      .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime());
 
-  const aggregatedData = aggregateByDate(records);
+    const totalInRange = sorted.reduce((sum, item) => sum + item.amount, 0);
 
-  // Get color based on amount (since we're aggregating multiple categories)
-  const getAmountColor = (amount: number) => {
-    if (amount > 200)
-      return {
-        bg: isDark ? 'rgba(255, 99, 132, 0.3)' : 'rgba(255, 99, 132, 0.2)',
-        border: isDark ? 'rgba(255, 99, 132, 0.8)' : 'rgba(255, 99, 132, 1)',
-      }; // Red for high spending
-    if (amount > 100)
-      return {
-        bg: isDark ? 'rgba(255, 206, 86, 0.3)' : 'rgba(255, 206, 86, 0.2)',
-        border: isDark ? 'rgba(255, 206, 86, 0.8)' : 'rgba(255, 206, 86, 1)',
-      }; // Yellow for medium spending
-    if (amount > 50)
-      return {
-        bg: isDark ? 'rgba(54, 162, 235, 0.3)' : 'rgba(54, 162, 235, 0.2)',
-        border: isDark ? 'rgba(54, 162, 235, 0.8)' : 'rgba(54, 162, 235, 1)',
-      }; // Blue for moderate spending
-    return {
-      bg: isDark ? 'rgba(75, 192, 192, 0.3)' : 'rgba(75, 192, 192, 0.2)',
-      border: isDark ? 'rgba(75, 192, 192, 0.8)' : 'rgba(75, 192, 192, 1)',
-    }; // Green for low spending
-  };
+    return { sorted, totalInRange };
+  }, [records, range]);
 
-  // Prepare data for the chart
+  // 2. CHART CONFIG
   const data = {
-    labels: aggregatedData.map((item) => {
-      // Format date as MM/DD for better readability
-      const [, month, day] = item.date.split('-');
-      return `${month}/${day}`;
+    labels: processedData.sorted.map((item) => {
+      const d = item.originalDate;
+      return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
     }),
     datasets: [
       {
-        data: aggregatedData.map((item) => item.amount),
-        backgroundColor: aggregatedData.map(
-          (item) => getAmountColor(item.amount).bg
-        ),
-        borderColor: aggregatedData.map(
-          (item) => getAmountColor(item.amount).border
-        ),
-        borderWidth: 1,
-        borderRadius: 2, // Rounded bar edges
+        data: processedData.sorted.map((item) => item.amount),
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.4)' : 'rgba(99, 102, 241, 0.15)',
+        borderColor: '#6366f1',
+        borderWidth: 2,
+        borderRadius: isMobile ? 6 : 10,
+        hoverBackgroundColor: '#6366f1',
+        barThickness: isMobile ? 12 : 24,
       },
     ],
   };
 
   const options = {
     responsive: true,
-    maintainAspectRatio: false, // Allow flexible height
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false, // Remove legend
-      },
-      title: {
-        display: false, // Remove chart title
-      },
+      legend: { display: false },
       tooltip: {
-        backgroundColor: isDark
-          ? 'rgba(31, 41, 55, 0.95)'
-          : 'rgba(255, 255, 255, 0.95)',
-        titleColor: isDark ? '#f9fafb' : '#1f2937',
-        bodyColor: isDark ? '#d1d5db' : '#374151',
-        borderColor: isDark ? '#374151' : '#e5e7eb',
+        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        titleColor: isDark ? '#f8fafc' : '#1e293b',
+        bodyColor: isDark ? '#94a3b8' : '#64748b',
+        borderColor: isDark ? '#334155' : '#e2e8f0',
         borderWidth: 1,
-        cornerRadius: 8,
+        padding: 12,
+        cornerRadius: 12,
         callbacks: {
-          label: function (context: { dataIndex: number }) {
-            const dataIndex = context.dataIndex;
-            const item = aggregatedData[dataIndex];
-            const categoriesText =
-              item.categories.length > 1
-                ? `Categories: ${item.categories.join(', ')}`
-                : `Category: ${item.categories[0]}`;
-            return [`Total: ₱${item.amount.toFixed(2)}`, categoriesText];
-          },
+          label: (context: any) => ` ₱${context.raw.toLocaleString()}`,
         },
       },
     },
     scales: {
       x: {
-        title: {
-          display: true,
-          text: 'Date',
-          font: {
-            size: isMobile ? 12 : 14,
-            weight: 'bold' as const,
-          },
-          color: isDark ? '#d1d5db' : '#2c3e50',
-        },
-        ticks: {
-          font: {
-            size: isMobile ? 10 : 12,
-          },
-          color: isDark ? '#9ca3af' : '#7f8c8d', // Gray x-axis labels
-          maxRotation: isMobile ? 45 : 0, // Rotate labels on mobile
-          minRotation: isMobile ? 45 : 0,
-        },
-        grid: {
-          display: false, // Hide x-axis grid lines
-        },
+        grid: { display: false },
+        ticks: { color: isDark ? '#64748b' : '#94a3b8', font: { size: 10, weight: 'bold' as const } },
       },
       y: {
-        title: {
-          display: true,
-          text: 'Amount (₱)',
-          font: {
-            size: isMobile ? 12 : 16, // Smaller font on mobile
-            weight: 'bold' as const,
-          },
-          color: isDark ? '#d1d5db' : '#2c3e50',
-        },
+        beginAtZero: true,
+        grid: { color: isDark ? '#1e293b' : '#f1f5f9', drawTicks: false },
         ticks: {
-          font: {
-            size: isMobile ? 10 : 12, // Smaller font on mobile
-          },
-          color: isDark ? '#9ca3af' : '#7f8c8d', // Gray y-axis labels
-          callback: function (value: string | number) {
-            return '₱' + value; // Add peso sign to y-axis labels
-          },
+          color: isDark ? '#64748b' : '#94a3b8',
+          font: { size: 10 },
+          callback: (value: any) => '₱' + value.toLocaleString(),
+          maxTicksLimit: 5,
         },
-        grid: {
-          color: isDark ? '#374151' : '#e0e0e0', // Dark mode grid lines
-        },
-        beginAtZero: true, // Start y-axis at zero for expenses
       },
     },
   };
 
   return (
-    <div className='relative w-full h-64 sm:h-72 md:h-80'>
-      <Bar data={data} options={options} />
+    <div className="space-y-6">
+      {/* CONTROL BAR */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+          {(['7d', '30d', 'all'] as TimeRange[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                range === r
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm ring-1 ring-slate-200 dark:ring-slate-600'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+            >
+              {r === '7d' ? 'Week' : r === '30d' ? 'Month' : 'All'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50/50 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100/50 dark:border-indigo-500/20">
+          <Calendar size={14} className="text-indigo-500" />
+          <div className="flex flex-col">
+            <span className="text-[8px] font-black text-indigo-500/60 uppercase tracking-[0.2em]">Period Total</span>
+            <span className="text-xs font-black text-slate-800 dark:text-white">
+              ₱{processedData.totalInRange.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* CHART CANVAS */}
+      <div className="relative w-full h-64 sm:h-72 md:h-80 animate-in fade-in slide-in-from-bottom-2 duration-700">
+        <Bar data={data} options={options} />
+      </div>
     </div>
   );
 };

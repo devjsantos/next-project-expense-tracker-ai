@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Bot,
   Zap,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 
 interface InsightData {
@@ -53,23 +54,22 @@ const AIInsights = () => {
       setInsights([{
         id: 'fallback-1',
         type: 'info',
-        title: 'AI Temporarily Offline',
-        message: "Patterns are tracked, but real-time insights are currently reloading.",
-        action: 'Try again later',
+        title: 'Neural Link Interrupted',
+        message: "Your patterns are safe, but my real-time analysis is taking a quick breather.",
+        action: 'Reconnect Now',
       }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // If AI fails repeatedly, show a persistent banner and report telemetry
   const reportFailure = async (details: { message: string; errors?: any }) => {
     try {
       const { default: report } = await import('@/app/actions/reportAiFailure');
       await report(details);
-      addToast('AI failure reported', 'info');
+      addToast('Engine diagnostic reported', 'info');
     } catch (err) {
-      addToast('Failed to report AI failure', 'error');
+      addToast('System report failed', 'error');
     }
   };
 
@@ -78,10 +78,10 @@ const AIInsights = () => {
     try {
       const { default: sendInsightsEmail } = await import('@/app/actions/sendInsightsEmail');
       const result = await sendInsightsEmail();
-      if (result?.ok) addToast('Insight report emailed!', 'success');
-      else addToast(typeof result?.error === 'string' ? result.error : 'Error occurred', 'error');
+      if (result?.ok) addToast('Analysis sent to your inbox!', 'success');
+      else addToast(typeof result?.error === 'string' ? result.error : 'Sync failed', 'error');
     } catch (err) {
-      addToast('Email service connection failed.', 'error');
+      addToast('Email service offline.', 'error');
     } finally {
       setIsEmailing(false);
     }
@@ -89,32 +89,26 @@ const AIInsights = () => {
 
   const handleActionClick = async (insight: InsightData) => {
     if (!insight.action) return;
-    // If this is a fallback insight, treat the action as a retry trigger
-    if (insight.id && insight.id.startsWith('fallback')) {
+    if (insight.id?.startsWith('fallback')) {
       await loadInsights();
       return;
     }
-    // If this insight has an attached details id, fetch and show details
+    
     const detailsId = (insight as any).detailsId;
     if (detailsId) {
       setIsLoading(true);
       try {
         const { default: getDetails } = await import('@/app/actions/getAiFailureDetails');
         const res = await getDetails(detailsId);
-        if (res?.ok) {
-          addToast('Fetched AI error details', 'info');
-          // Show details in a toast or modal — here we add a persistent toast with JSON
-          addToast(JSON.stringify(res.details || res), 'info');
-        } else {
-          addToast('Failed to fetch details', 'error');
-        }
+        if (res?.ok) addToast('Diagnostic log retrieved', 'info');
       } catch (err) {
-        addToast('Error fetching details', 'error');
+        addToast('Log retrieval error', 'error');
       } finally {
         setIsLoading(false);
       }
       return;
     }
+
     const existingAnswer = aiAnswers.find((a) => a.insightId === insight.id);
     if (existingAnswer) {
       setAiAnswers((prev) => prev.filter((a) => a.insightId !== insight.id));
@@ -130,161 +124,111 @@ const AIInsights = () => {
         prev.map((a) => a.insightId === insight.id ? { ...a, answer: formatPesoText(answer), isLoading: false } : a)
       );
     } catch (error) {
-      addToast('AI failed to respond.', 'warning');
+      addToast('AI link timed out.', 'warning');
       setAiAnswers((prev) => prev.filter((a) => a.insightId !== insight.id));
     }
   };
 
   useEffect(() => { loadInsights(); }, []);
 
-  useEffect(() => {
-    // Detect fallback/error insights and report once
-    const hasError = insights.some(i => i.id?.startsWith('err') || i.id?.startsWith('error') || i.id?.startsWith('fallback'));
-    if (hasError) {
-      reportFailure({ message: 'AI returned fallback insights', errors: insights });
-    }
-  }, [insights]);
-
   const getInsightUI = (type: string) => {
     switch (type) {
-      case 'warning': return { icon: <AlertTriangle size={18} />, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800' };
-      case 'success': return { icon: <CheckCircle2 size={18} />, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800' };
-      case 'tip': return { icon: <Lightbulb size={18} />, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', border: 'border-indigo-200 dark:border-indigo-800' };
-      default: return { icon: <Info size={18} />, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800' };
+      case 'warning': return { icon: <AlertTriangle size={18} />, color: 'text-amber-500', bg: 'bg-amber-50/50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-800/40' };
+      case 'success': return { icon: <CheckCircle2 size={18} />, color: 'text-emerald-500', bg: 'bg-emerald-50/50 dark:bg-emerald-900/10', border: 'border-emerald-100 dark:border-emerald-800/40' };
+      case 'tip': return { icon: <Lightbulb size={18} />, color: 'text-indigo-500', bg: 'bg-indigo-50/50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-800/40' };
+      default: return { icon: <Info size={18} />, color: 'text-blue-500', bg: 'bg-blue-50/50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-800/40' };
     }
   };
 
-  const formatLastUpdated = () => {
-    if (!lastUpdated) return 'Syncing...';
-    const diffMins = Math.floor((new Date().getTime() - lastUpdated.getTime()) / 60000);
-    return diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
-  };
-
-  /* --- STYLIZED LOADING STATE --- */
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center p-8 sm:p-12 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] shadow-xl min-h-[450px] w-full">
-      <div className="flex flex-col items-center text-center">
-        {/* Animated Icon Container */}
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse"></div>
-          <div className="relative w-24 h-24 bg-indigo-600 rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-indigo-500/40">
-            <Bot className="text-white animate-bounce" size={48} />
-          </div>
-        </div>
-
-        {/* Text Messaging */}
-        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">
-          Analyzing Patterns
-        </h3>
-        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] animate-pulse mb-10">
-          Syncing SmartJuan Ledger...
-        </p>
-
-        {/* Fixed Progress Bar */}
-        <div className="w-64 space-y-4">
-          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
-            {/* This is the moving progress indicator */}
-            <div className="absolute top-0 left-0 h-full bg-indigo-500 w-1/3 rounded-full animate-[loading_1.5s_infinite_ease-in-out]"></div>
-          </div>
-
-          <div className="flex justify-between items-center px-1">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Neural Link</span>
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Processing</span>
-          </div>
+    <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2.5rem] shadow-xl min-h-[450px] w-full">
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse"></div>
+        <div className="relative w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-indigo-500/40">
+          <Bot className="text-white animate-bounce" size={40} />
         </div>
       </div>
-
-      {/* Tailwind Custom Animation Style */}
-      <style jsx global>{`
-        @keyframes loading {
-          0% { left: -40%; width: 30%; }
-          50% { width: 60%; }
-          100% { left: 110%; width: 30%; }
-        }
-      `}</style>
+      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-1">Crunching Numbers</h3>
+      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.3em] animate-pulse">Neural Sync in Progress</p>
     </div>
   );
 
   return (
-    <div className='bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800'>
-      {/* Header */}
-      <div className='flex items-center justify-between mb-8'>
-        {/** Persistent AI failure banner */}
-        {insights.some(i => i.id?.startsWith('err') || i.id?.startsWith('error') || i.id?.startsWith('fallback')) && (
-          <div className='w-full mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 flex items-center justify-between'>
-            <div className='flex items-center gap-3'>
-              <AlertTriangle size={18} className='text-rose-600' />
-              <div>
-                <div className='text-sm font-black text-rose-700 dark:text-rose-200'>AI Insights Unavailable</div>
-                <div className='text-xs text-rose-600 dark:text-rose-300'>We couldn't fetch reliable AI insights. You can retry or report this issue.</div>
-              </div>
-            </div>
-            <div className='flex gap-2'>
-              <button onClick={loadInsights} className='px-3 py-2 bg-white rounded-xl font-black text-xs'>Retry Analysis</button>
-              <button onClick={() => reportFailure({ message: 'User reported AI failure from UI' })} className='px-3 py-2 bg-rose-600 text-white rounded-xl font-black text-xs'>Report</button>
-            </div>
-          </div>
-        )}
+    <div className='bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800/50'>
+      
+      {/* HEADER SECTION */}
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10'>
         <div className='flex items-center gap-4'>
           <div className='w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20'>
-            <Bot className="text-white" size={24} />
+            <Sparkles className="text-white" size={22} />
           </div>
           <div>
-            <h3 className='text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter'>AI Insights</h3>
+            <h3 className='text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter'>Smart Analysis</h3>
             <div className="flex items-center gap-2 mt-0.5">
-              <Zap size={10} className="text-indigo-500 fill-indigo-500" />
-              <p className='text-[10px] font-black text-slate-400 uppercase tracking-widest'>SmartJuan V3.0 Engine</p>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className='text-[10px] font-black text-slate-400 uppercase tracking-widest'>Core Engine V3.0</p>
             </div>
           </div>
         </div>
 
-        <div className='flex items-center gap-2'>
-          <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-700">
-            {formatLastUpdated()}
+        <div className='flex items-center gap-2 self-end sm:self-auto'>
+          <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-800">
+            Synced {lastUpdated ? lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
           </div>
-          <button onClick={loadInsights} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors">
-            <RefreshCcw size={18} />
+          <button onClick={loadInsights} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-600 transition-all active:rotate-180 duration-500">
+            <RefreshCcw size={16} />
           </button>
         </div>
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-        {insights.map((insight) => {
+      {/* INSIGHTS GRID */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-5'>
+        {insights.map((insight, index) => {
           const ui = getInsightUI(insight.type);
           const currentAnswer = aiAnswers.find((a) => a.insightId === insight.id);
 
           return (
-            <div key={insight.id} className={`group relative p-5 rounded-[1.8rem] border ${ui.bg} ${ui.border} transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/5`}>
+            <div 
+              key={insight.id} 
+              style={{ animationDelay: `${index * 100}ms` }}
+              className={`group animate-in fade-in slide-in-from-bottom-4 p-5 rounded-[2rem] border ${ui.bg} ${ui.border} transition-all duration-300 hover:scale-[1.01]`}
+            >
               <div className='flex items-start gap-4'>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-slate-900 shadow-sm ${ui.color}`}>
+                <div className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center bg-white dark:bg-slate-950 shadow-sm ${ui.color}`}>
                   {ui.icon}
                 </div>
-                <div className='flex-1'>
-                  <h4 className='font-black text-slate-900 dark:text-white text-xs uppercase tracking-wide mb-1'>
+                <div className='flex-1 min-w-0'>
+                  <h4 className='font-black text-slate-900 dark:text-white text-[11px] uppercase tracking-wider mb-1 truncate'>
                     {formatPesoText(insight.title)}
                   </h4>
-                  <p className='text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-4'>
+                  <p className='text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-5 font-medium'>
                     {formatPesoText(insight.message)}
                   </p>
 
                   {insight.action && (
                     <button
                       onClick={() => handleActionClick(insight)}
-                      className={`group/btn flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all bg-white dark:bg-slate-900 ${ui.color} shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-black`}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${currentAnswer ? 'bg-slate-900 text-white dark:bg-white dark:text-black' : 'bg-white dark:bg-slate-950 ' + ui.color} border border-slate-200 dark:border-slate-800 shadow-sm active:scale-95`}
                     >
-                      {currentAnswer?.isLoading ? 'Calculating...' : insight.action}
-                      <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                      {currentAnswer?.isLoading ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <>
+                          {currentAnswer ? 'Close Advice' : insight.action}
+                          {!currentAnswer && <ArrowRight size={12} />}
+                        </>
+                      )}
                     </button>
                   )}
 
                   {currentAnswer && !currentAnswer.isLoading && (
-                    <div className='mt-4 p-4 bg-indigo-600 text-white rounded-2xl animate-in slide-in-from-top-2'>
-                      <div className='flex items-center gap-2 mb-2'>
-                        <Sparkles size={12} className="text-indigo-200" />
-                        <span className='text-[9px] font-black uppercase tracking-widest text-indigo-100'>Advice</span>
+                    <div className='mt-4 p-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-[1.5rem] shadow-xl shadow-indigo-500/20 animate-in zoom-in-95 duration-300'>
+                      <div className='flex items-center gap-2 mb-3'>
+                        <Bot size={14} className="text-indigo-200" />
+                        <span className='text-[9px] font-black uppercase tracking-[0.2em] text-indigo-100'>AI Strategy</span>
                       </div>
-                      <p className='text-[11px] font-bold leading-relaxed'>
-                        {currentAnswer.answer}
+                      <p className='text-[12px] font-bold leading-relaxed italic'>
+                        "{currentAnswer.answer}"
                       </p>
                     </div>
                   )}
@@ -295,29 +239,27 @@ const AIInsights = () => {
         })}
       </div>
 
-      {/* Footer Actions */}
-      <div className='mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <div className='flex -space-x-2'>
-            {[1, 2, 3].map(i => <div key={i} className={`w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 bg-indigo-${i}00`} />)}
-          </div>
-          <span className='text-[10px] font-black text-slate-400 uppercase tracking-widest'>Trusted by SmartJuan AI</span>
+      {/* FOOTER ACTIONS */}
+      <div className='mt-10 pt-8 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row gap-4 items-center justify-between'>
+        <div className='flex items-center gap-3 bg-slate-50 dark:bg-slate-800/40 px-4 py-2 rounded-2xl'>
+          <Zap size={14} className="text-amber-500 fill-amber-500" />
+          <span className='text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest'>Intelligence Active</span>
         </div>
 
         <div className='flex gap-3 w-full sm:w-auto'>
           <button
             onClick={handleEmailReport}
             disabled={isEmailing}
-            className='flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all active:scale-95'
+            className='flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all'
           >
             <Mail size={16} />
-            {isEmailing ? 'Sending...' : 'Report'}
+            {isEmailing ? 'Sending...' : 'Mail Report'}
           </button>
           <button
             onClick={loadInsights}
-            className='flex-1 sm:flex-none px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95'
+            className='flex-1 sm:flex-none px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/25 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:translate-y-0'
           >
-            Sync Data
+            Refresh Engine
           </button>
         </div>
       </div>

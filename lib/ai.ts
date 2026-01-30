@@ -62,10 +62,7 @@ const openai = new OpenAI({
 /* ================= 2026 STABLE FREE MODEL CONFIG ================= */
 
 // Using Gemini 2.0 Flash as primary because it is the most stable free vision/text model
-const PRIMARY_MODEL = [
-  'google/gemini-2.0-flash-001', 
-  'google/gemini-2.0-flash-lite-preview-02-05:free'
-];
+const PRIMARY_MODEL = 'google/gemini-2.0-flash-001';
 
 // Fallbacks specifically labeled ":free" to avoid 402 Payment errors
 const TEXT_FALLBACKS = [
@@ -73,7 +70,7 @@ const TEXT_FALLBACKS = [
   'mistralai/mistral-7b-instruct:free',
   'microsoft/phi-3-medium-128k-instruct:free'
 ];
-
+const FAST_FALLBACK = 'google/gemini-2.0-flash-lite-preview-02-05:free';
 const VISION_FALLBACKS = [
   'google/gemini-2.0-flash-lite-preview-02-05:free',
   'qwen/qwen-2.5-vl-7b-instruct:free'
@@ -234,7 +231,7 @@ export async function categorizeExpense(description: string): Promise<string> {
 
     const category = completion.choices[0].message.content?.trim();
     // Validate category against known list
-    const validCategories = ['Food','Transportation','Entertainment','Shopping','Bills','Healthcare','Other'];
+    const validCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
     if (typeof category === 'string' && validCategories.includes(category)) return category;
     if (typeof category === 'string') {
       console.warn('AI returned unknown category:', category);
@@ -281,28 +278,36 @@ export async function analyzeReceiptImage(base64Image: string, mimeType: string)
         {
           role: 'user',
           content: [
-            { type: 'text', text: "Extract receipt to JSON: {amount: number, description: string, category: string}. Return only JSON." },
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
+            {
+              type: 'text',
+              text: "Return JSON: {amount: number, description: string, category: string}. Use categories: Food, Transportation, Shopping, Entertainment, Bills, Healthcare, or Other. Description should be the store name."
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+                detail: "low" // <--- CRITICAL: Tells AI not to obsess over high-res details, saves seconds
+              }
+            }
           ],
         },
       ],
-      max_tokens: 400,
+      max_tokens: 150, // Reduced from 400 to stop AI from "wandering"
+      temperature: 0.1, // Lower temperature = faster, more focused response
       extra_body: {
-        "models": VISION_FALLBACKS,
-        "route": "fallback"
+        "models": [FAST_FALLBACK],
+        "route": "fallback",
+        "transforms": ["middle-out"] // Optimizes context window
       }
     } as any);
 
     const content = completion.choices[0].message.content || '';
-    const cleaned = content.replace(/^```json\s*|```$/g, '').trim();
+    const cleaned = content.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```json\s*|```$/g, '').trim();
     const parsed = JSON.parse(cleaned);
-    const ok = validateReceipt(parsed);
-    if (!ok) {
-      throw new AIValidationError('Invalid receipt JSON', validateReceipt.errors);
-    }
+
     return parsed;
   } catch (error) {
-    console.error("Vision Error:", error);
-    throw new Error("AI services are currently congested. Please try again.");
+    console.error("Vision Speed Error:", error);
+    throw new Error("Congestion. Try manual entry.");
   }
 }

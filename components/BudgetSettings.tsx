@@ -2,36 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
-import Toast from './Toast';
 import { useToast } from './ToastProvider';
+import { Save, X, Target, ShieldCheck, AlertCircle, Coins } from 'lucide-react';
 
 /* ================= TYPES ================= */
-interface Allocation {
-  category: string;
-  amount: number;
-}
+interface Allocation { category: string; amount: number; }
+interface InitialBudget { month?: string; monthlyTotal?: number; allocations?: Allocation[]; }
+interface BudgetApiResponse { budget?: { monthlyTotal: number; allocations: Allocation[]; }; error?: string; }
 
-interface InitialBudget {
-  month?: string;
-  monthlyTotal?: number;
-  allocations?: Allocation[];
-}
-
-interface LocalToastState {
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-}
-
-// Added specific interface for API responses to avoid 'any'
-interface BudgetApiResponse {
-  budget?: {
-    monthlyTotal: number;
-    allocations: Allocation[];
-  };
-  error?: string;
-}
-
-/* ================= CONSTANTS ================= */
 const defaultCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
 
 export default function BudgetSettings({ initial, onClose }: { initial?: InitialBudget; onClose?: () => void }) {
@@ -42,40 +20,31 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   );
 
   const { addToast } = useToast();
-  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
-  const [localToast, setLocalToast] = useState<LocalToastState | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Human-readable month display
   const displayMonth = useMemo(() => {
     if (!month) return "Select Month";
     const date = new Date(month + "-02");
-    if (isNaN(date.getTime())) return "Invalid Date"; // Check if date is valid
-    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    return isNaN(date.getTime()) ? "Invalid" : date.toLocaleString('default', { month: 'long', year: 'numeric' });
   }, [month]);
+
   const allocationSum = allocations.reduce((sum, a) => sum + a.amount, 0);
   const remainingToAllocate = monthlyTotal - allocationSum;
   const isOverAllocated = allocationSum > monthlyTotal;
 
   const fetchBudget = useCallback(async () => {
     if (!month) return;
-    setIsLoadingBudget(true);
     try {
       const res = await fetch(`/api/budget?month=${month}`);
-      const data: BudgetApiResponse = await res.json(); // Fixed: Added explicit type
+      const data: BudgetApiResponse = await res.json();
       if (data?.budget) {
         setMonthlyTotal(data.budget.monthlyTotal || 0);
         setAllocations(data.budget.allocations || defaultCategories.map(c => ({ category: c, amount: 0 })));
       }
-    } catch (err) {
-      console.error("Fetch error:", err);
-    } finally {
-      setIsLoadingBudget(false);
-    }
+    } catch (err) { console.error(err); }
   }, [month]);
 
-  useEffect(() => {
-    fetchBudget();
-  }, [fetchBudget]);
+  useEffect(() => { fetchBudget(); }, [fetchBudget]);
 
   const handleAllocationChange = (index: number, value: string) => {
     const val = parseFloat(value) || 0;
@@ -89,9 +58,12 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (monthlyTotal <= 0) {
-      setLocalToast({ message: 'Please set a valid total budget.', type: 'error' });
+      addToast('Please set a budget higher than ₱0', 'warning');
       return;
     }
+
+    addToast('Saving your budget limits...', 'loading');
+    setIsProcessing(true);
 
     const form = new FormData();
     form.set('month', month);
@@ -99,83 +71,85 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     form.set('allocations', JSON.stringify(allocations));
     form.set('periodType', 'monthly');
 
-    setIsLoadingBudget(true);
     try {
       const res = await setMonthlyBudget(form);
       if (res && 'error' in res) {
-        addToast({ message: 'Error saving budget', type: 'error' });
+        addToast('Could not save budget. Try again.', 'error');
       } else {
-        addToast({ message: `Budget for ${displayMonth} updated!`, type: 'success' });
+        addToast(`Budget for ${displayMonth} is ready!`, 'success');
         window.dispatchEvent(new CustomEvent('budget:changed'));
-        if (onClose) onClose(); // Fixed: Proper function call instead of expression
+        if (onClose) onClose();
       }
     } catch {
-      addToast({ message: 'Database communication error', type: 'error' });
+      addToast('Connection error. Please try again.', 'error');
     } finally {
-      setIsLoadingBudget(false);
+      setIsProcessing(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <form onSubmit={submit} className="space-y-6">
-        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
-          <label className="block text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
-            Target Month
-          </label>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+    <div className="w-full">
+      <form onSubmit={submit} className="space-y-5">
+        
+        {/* 1. COMPACT TOP BAR (Month & Remainder) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
             <input
               type="month"
               value={month}
               onChange={e => setMonth(e.target.value)}
-              className="w-full sm:w-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2 font-medium focus:ring-2 focus:ring-indigo-500"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 font-bold text-xs outline-none focus:ring-1 focus:ring-indigo-500"
             />
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Editing: <span className="text-indigo-600">{displayMonth}</span>
-            </span>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+            <span className="text-[10px] font-black uppercase text-slate-400 truncate">Editing {displayMonth}</span>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Monthly Budget</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
-              <input
-                type="number"
-                step="0.01"
-                value={monthlyTotal || ''}
-                onChange={e => setMonthlyTotal(parseFloat(e.target.value) || 0)}
-                className="w-full pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                placeholder="0.00"
-              />
+          <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${isOverAllocated ? 'bg-red-500/10 border-red-200' : 'bg-emerald-500/10 border-emerald-200'}`}>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Left to Plan:</span>
+            <div className="flex items-center gap-2">
+               <span className={`text-sm font-black ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
+                ₱{remainingToAllocate.toLocaleString()}
+              </span>
+              {isOverAllocated && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
             </div>
           </div>
+        </div>
 
-          <div className={`p-4 rounded-xl border flex flex-col justify-center ${isOverAllocated ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
-            <span className="text-xs font-bold uppercase text-gray-500">Remaining to Allocate</span>
-            <span className={`text-xl font-bold ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
-              ₱{(remainingToAllocate || 0).toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}            </span>
+        {/* 2. MAIN BUDGET INPUT */}
+        <div className="px-1">
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Monthly Goal</label>
+          <div className="relative group">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-indigo-500 group-focus-within:scale-110 transition-transform">₱</span>
+            <input
+              type="number"
+              step="0.01"
+              value={monthlyTotal || ''}
+              onChange={e => setMonthlyTotal(parseFloat(e.target.value) || 0)}
+              className="w-full pl-10 pr-4 py-4 bg-white dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-xl focus:border-indigo-500 outline-none transition-all"
+              placeholder="0.00"
+            />
           </div>
         </div>
 
+        {/* 3. CATEGORY GRID (3-Columns Space Saver) */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Category Breakdown</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2 px-1">
+            <Coins size={14} className="text-indigo-500" />
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Allocation</h3>
+          </div>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar">
             {allocations.map((a, i) => (
-              <div key={a.category} className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl flex items-center justify-between gap-2 shadow-sm">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 truncate">{a.category}</span>
-                <div className="relative w-28">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">₱</span>
+              <div key={a.category} className="p-3 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-indigo-500/30 transition-all">
+                <span className="block text-[9px] font-black text-slate-400 uppercase mb-2 truncate">{a.category}</span>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">₱</span>
                   <input
                     type="number"
                     step="0.01"
                     value={a.amount || ''}
                     onChange={e => handleAllocationChange(i, e.target.value)}
-                    className="w-full pl-5 pr-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 border border-transparent focus:border-indigo-500 rounded-md outline-none text-right"
+                    className="w-full pl-5 pr-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-transparent focus:border-indigo-500 rounded-lg outline-none font-bold text-right transition-colors"
                   />
                 </div>
               </div>
@@ -183,31 +157,25 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           </div>
         </div>
 
-        <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <button
-            type="submit"
-            disabled={isLoadingBudget || isOverAllocated}
-            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold rounded-xl transition-all shadow-lg"
-          >
-            {isLoadingBudget ? 'Processing...' : 'Save Monthly Budget'}
-          </button>
+        {/* 4. COMPACT ACTIONS */}
+        <div className="flex gap-3 pt-4 border-t border-slate-50 dark:border-slate-800">
           <button
             type="button"
-            onClick={() => onClose?.()} // Safe navigation call
-            className="..."
+            onClick={() => onClose?.()}
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-slate-200 transition-all"
           >
             Cancel
           </button>
+          <button
+            type="submit"
+            disabled={isProcessing || isOverAllocated}
+            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+          >
+            <Save size={14} />
+            {isProcessing ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </form>
-
-      {localToast && (
-        <Toast
-          message={localToast.message}
-          type={localToast.type}
-          onClose={() => setLocalToast(null)}
-        />
-      )}
     </div>
   );
 }
