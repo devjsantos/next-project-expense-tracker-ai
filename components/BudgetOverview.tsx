@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import BudgetSettings from "./BudgetSettings";
-import { 
-  Download, 
-  Settings2, 
-  Calendar, 
-  Wallet, 
-  Activity, 
-  Timer, 
+import {
+  Download,
+  Settings2,
+  Calendar,
+  Wallet,
+  Activity,
+  Timer,
   ArrowUpRight,
   ChevronRight,
   X
@@ -63,13 +63,13 @@ export default function BudgetOverview({ month }: { month?: string }) {
     try {
       const q = month ? `?month=${encodeURIComponent(month)}` : "";
       const res = await fetch(`/api/budget/export${q}`);
-      
+
       if (!res.ok) throw new Error("Export failed");
 
       // FIX: Ensure we create a blob with the explicit CSV type
       const blob = await res.blob();
       const csvBlob = new Blob([blob], { type: 'text/csv;charset=utf-8;' });
-      
+
       const url = URL.createObjectURL(csvBlob);
       const a = document.createElement("a");
       a.href = url;
@@ -78,9 +78,9 @@ export default function BudgetOverview({ month }: { month?: string }) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (e) { 
+    } catch (e) {
       console.error(e);
-      alert("Export failed."); 
+      alert("Export failed.");
     }
   };
 
@@ -98,7 +98,7 @@ export default function BudgetOverview({ month }: { month?: string }) {
 
   return (
     <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 overflow-hidden">
-      
+
       <div className="p-8 pb-0 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
@@ -135,10 +135,10 @@ export default function BudgetOverview({ month }: { month?: string }) {
               <Activity size={20} />
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-1000 ease-out ${isOver ? 'bg-red-500' : 'bg-indigo-500'}`}
                 style={{ width: `${Math.min(percent * 100, 100)}%` }}
               />
@@ -152,9 +152,9 @@ export default function BudgetOverview({ month }: { month?: string }) {
 
         <div className="grid grid-cols-1 gap-4">
           {[
-            { label: 'Liquidity Left', val: `₱${data.remaining.toLocaleString()}`, icon: <Wallet size={14}/>, color: 'text-emerald-500' },
-            { label: 'Burn Rate / Day', val: `₱${data.dailyAverage.toFixed(0)}`, icon: <ArrowUpRight size={14}/>, color: 'text-indigo-500' },
-            { label: 'Cycle Days Left', val: data.daysLeft, icon: <Timer size={14}/>, color: 'text-amber-500' }
+            { label: 'Liquidity Left', val: `₱${data.remaining.toLocaleString()}`, icon: <Wallet size={14} />, color: 'text-emerald-500' },
+            { label: 'Burn Rate / Day', val: `₱${data.dailyAverage.toFixed(0)}`, icon: <ArrowUpRight size={14} />, color: 'text-indigo-500' },
+            { label: 'Cycle Days Left', val: data.daysLeft, icon: <Timer size={14} />, color: 'text-amber-500' }
           ].map((stat, i) => (
             <div key={i} className="p-4 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
               <div>
@@ -174,24 +174,41 @@ export default function BudgetOverview({ month }: { month?: string }) {
             <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Category Matrix</span>
             <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800" />
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.perCategory.map((c) => {
-              const used = c.allocated > 0 ? Math.min(1, c.spent / c.allocated) : 0;
+              // Logic Fix: If no allocation set, but money is spent, show 100% progress
+              const isUnbudgeted = c.allocated <= 0 && c.spent > 0;
+              const used = c.allocated > 0 ? Math.min(1, c.spent / c.allocated) : (isUnbudgeted ? 1 : 0);
+
+              // Style Fix: If unbudgeted, use indigo (blue). If over budget (>90%), use red.
+              const barColor = used > 0.9 && c.allocated > 0 ? 'bg-red-400' : 'bg-indigo-500';
+
               return (
                 <div key={c.category} className="group p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-transparent hover:border-indigo-500/30 transition-all">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">{c.category}</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">
+                      {c.category}
+                    </span>
+                    {isUnbudgeted && (
+                      <span className="text-[8px] font-black px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded-full">
+                        UNBUDGETED
+                      </span>
+                    )}
                     <ChevronRight size={12} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
                   </div>
+
                   <div className="flex justify-between items-end mb-2">
                     <span className="text-[10px] font-bold text-slate-500">₱{c.spent.toLocaleString()}</span>
-                    <span className="text-[9px] font-black text-slate-400">Target: ₱{c.allocated.toLocaleString()}</span>
+                    <span className="text-[9px] font-black text-slate-400">
+                      {c.allocated > 0 ? `Target: ₱${c.allocated.toLocaleString()}` : "No Limit Set"}
+                    </span>
                   </div>
+
                   <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-700 ${used > 0.9 ? 'bg-red-400' : 'bg-indigo-500'}`} 
-                      style={{ width: `${used * 100}%` }} 
+                    <div
+                      className={`h-full transition-all duration-700 ${barColor}`}
+                      style={{ width: `${used * 100}%` }}
                     />
                   </div>
                 </div>

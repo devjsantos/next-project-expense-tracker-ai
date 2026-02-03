@@ -214,8 +214,9 @@ const AddRecord = () => {
 
               <div className="grid grid-cols-1 gap-4">
                 {/* Description */}
-                <div className="group relative bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl transition-all focus-within:ring-2 focus-within:ring-indigo-500/20">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group-focus-within:border-indigo-500 flex items-center justify-center shadow-none">
+                <div className="group relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl transition-all focus-within:ring-2 focus-within:ring-indigo-500/20">
+                  {/* Icon Container: Added z-10 and pointer-events-none to prevent 'covering' the icon */}
+                  <div className="absolute z-10 pointer-events-none left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm">
                     <Tag
                       className="text-slate-500 group-focus-within:text-indigo-500 transition-colors"
                       size={16}
@@ -223,29 +224,39 @@ const AddRecord = () => {
                     />
                   </div>
                   <input
-                    type="text" value={description}
+                    type="text"
+                    value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Merchant or Service"
-                    className="w-full pl-16 pr-6 py-5 bg-transparent font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
+                    className="relative z-0 w-full pl-16 pr-6 py-5 bg-transparent font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
                     required
                   />
                 </div>
 
                 {/* Date & Category Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="relative bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <div className="relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl group">
+                    {/* Calendar Icon: z-10 ensures it stays above the date picker background */}
+                    <Calendar className="absolute z-10 left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
                     <input
-                      type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-transparent font-bold text-slate-700 dark:text-slate-300 outline-none"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="relative z-0 w-full pl-12 pr-4 py-4 bg-transparent font-bold text-slate-700 dark:text-slate-300 outline-none uppercase text-[10px]"
                     />
                   </div>
 
-                  <div className="relative bg-slate-50 dark:bg-slate-800/50 p-1 rounded-2xl group cursor-pointer overflow-hidden">
+                  <div className="relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl group cursor-pointer overflow-hidden">
                     <div className="flex items-center gap-2 pl-4 py-4 pr-4">
-                      {isAutoCategorizing ? <Loader2 size={16} className="text-indigo-500 animate-spin" /> : <Sparkles size={16} className="text-indigo-500" />}
+                      {isAutoCategorizing ? (
+                        <Loader2 size={16} className="text-indigo-500 animate-spin" />
+                      ) : (
+                        <Sparkles size={16} className="text-indigo-500" />
+                      )}
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-1">Category</span>
-                      <span className="text-xs font-bold dark:text-white">{category ? CATEGORIES.find(c => c.id === category)?.label : 'None'}</span>
+                      <span className="text-xs font-bold dark:text-white">
+                        {category ? CATEGORIES.find(c => c.id === category)?.label : 'None'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -280,7 +291,7 @@ const AddRecord = () => {
                   <Loader2 className="animate-spin mx-auto" size={20} />
                 ) : (
                   <div className="flex items-center justify-center gap-2">
-                    Verify & Commit <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    Add Expense <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 )}
               </button>
