@@ -3,12 +3,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
 import { useToast } from './ToastProvider';
-import { Save, X, Target, ShieldCheck, AlertCircle, Coins } from 'lucide-react';
+import { Save, AlertCircle, Coins } from 'lucide-react';
 
 /* ================= TYPES ================= */
 interface Allocation { category: string; amount: number; }
 interface InitialBudget { month?: string; monthlyTotal?: number; allocations?: Allocation[]; }
-interface BudgetApiResponse { budget?: { monthlyTotal: number; allocations: Allocation[]; }; error?: string; }
+
+// This fixes your "Cannot find name LocalToastState" error
+interface LocalToastState {
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+}
 
 const defaultCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
 
@@ -18,9 +23,12 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   const [allocations, setAllocations] = useState<Allocation[]>(
     initial?.allocations ?? defaultCategories.map(category => ({ category, amount: 0 }))
   );
-
-  const { addToast } = useToast();
+  
+  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // useToast from your provider
+  const { addToast } = useToast();
 
   const displayMonth = useMemo(() => {
     if (!month) return "Select Month";
@@ -34,17 +42,32 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
 
   const fetchBudget = useCallback(async () => {
     if (!month) return;
+    setIsLoadingBudget(true);
     try {
-      const res = await fetch(`/api/budget?month=${month}`);
-      const data: BudgetApiResponse = await res.json();
+      const res = await fetch(`/api/budget/status?month=${month}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+
       if (data?.budget) {
         setMonthlyTotal(data.budget.monthlyTotal || 0);
-        setAllocations(data.budget.allocations || defaultCategories.map(c => ({ category: c, amount: 0 })));
+        if (data.perCategory) {
+          setAllocations(data.perCategory.map((pc: any) => ({
+            category: pc.category,
+            amount: pc.allocated
+          })));
+        }
       }
-    } catch (err) { console.error(err); }
-  }, [month]);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      addToast('Failed to load budget configuration', 'error');
+    } finally {
+      setIsLoadingBudget(false);
+    }
+  }, [month, addToast]);
 
-  useEffect(() => { fetchBudget(); }, [fetchBudget]);
+  useEffect(() => {
+    fetchBudget();
+  }, [fetchBudget]);
 
   const handleAllocationChange = (index: number, value: string) => {
     const val = parseFloat(value) || 0;
@@ -91,7 +114,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     <div className="w-full">
       <form onSubmit={submit} className="space-y-5">
         
-        {/* 1. COMPACT TOP BAR (Month & Remainder) */}
+        {/* 1. TOP BAR */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
             <input
@@ -131,7 +154,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           </div>
         </div>
 
-        {/* 3. CATEGORY GRID (3-Columns Space Saver) */}
+        {/* 3. CATEGORY ALLOCATION */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 px-1">
             <Coins size={14} className="text-indigo-500" />
@@ -157,7 +180,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           </div>
         </div>
 
-        {/* 4. COMPACT ACTIONS */}
+        {/* 4. ACTIONS */}
         <div className="flex gap-3 pt-4 border-t border-slate-50 dark:border-slate-800">
           <button
             type="button"
