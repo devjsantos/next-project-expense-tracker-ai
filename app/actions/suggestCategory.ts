@@ -6,21 +6,27 @@ export async function suggestCategory(
   description: string
 ): Promise<{ category: string; error?: string }> {
   try {
-    if (!description || description.trim().length < 2) {
-      return {
-        category: 'Other',
-        error: 'Description too short for AI analysis',
-      };
+    const cleanDesc = description.trim();
+
+    // Safety check for very common short words
+    if (!cleanDesc || cleanDesc.length < 3) {
+      return { category: 'Other' };
     }
 
-    const category = await categorizeExpense(description.trim());
-    console.log("AI Suggested:", category);
-    return { category };
+    // Simple local mapping to save AI costs for obvious items
+    const lowerDesc = cleanDesc.toLowerCase();
+    if (lowerDesc.includes('grab') || lowerDesc.includes('taxi') || lowerDesc.includes('joyride'))
+      return { category: 'Transportation' };
+    if (lowerDesc.includes('food') || lowerDesc.includes('mcdo') || lowerDesc.includes('jollibee'))
+      return { category: 'Food' };
+
+    const category = await categorizeExpense(cleanDesc);
+    return { category: category || 'Other' };
   } catch (error) {
-    console.error('❌ Error in suggestCategory server action:', error);
+    console.error('❌ AI Suggestion Error:', error);
     return {
       category: 'Other',
-      error: 'Unable to suggest category at this time',
+      error: 'AI currently unavailable',
     };
   }
 }

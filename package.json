@@ -2,6 +2,7 @@
   "name": "next-expenses-tracker-ai",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
@@ -15,6 +16,7 @@
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "chart.js": "^4.5.0",
+    "dotenv": "^17.2.4",
     "gsap": "^3.13.0",
     "lucide-react": "^0.563.0",
     "next": "^16.0.1",

@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/prisma';
 
 export async function GET(req: Request) {
-  // 1. Security Check (Required for Vercel Cron)
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
@@ -10,25 +9,25 @@ export async function GET(req: Request) {
 
   try {
     const today = new Date();
-
-    // 2. Find all active expenses where nextDueDate is today or in the past
+    // 1. Get all active rules that are due or have never run
     const dueExpenses = await db.recurringExpense.findMany({
       where: {
         active: true,
         status: 'active',
         OR: [
           { nextDueDate: { lte: today } },
-          { nextDueDate: null } // Handle newly created rules that haven't run yet
+          { nextDueDate: null }
         ]
       }
     });
 
-    const results = await Promise.all(
-      dueExpenses.map(async (expense) => {
-        // Calculate the actual date it was due
-        const baseDate = expense.nextDueDate || expense.startDate;
+    let totalCreated = 0;
 
-        // 3. Create the Transaction Record
+    for (const expense of dueExpenses) {
+      let currentDueDate = expense.nextDueDate || expense.startDate;
+
+      // 2. While loop to handle missed occurrences (Catch-up)
+      while (currentDueDate <= today) {
         await db.records.create({
           data: {
             text: `[Auto] ${expense.text}`,
@@ -36,31 +35,31 @@ export async function GET(req: Request) {
             category: expense.category,
             userId: expense.userId,
             recurringId: expense.id,
-            date: baseDate, // Log it on the actual due date
+            date: new Date(currentDueDate),
           },
         });
 
-        // 4. Calculate Next Due Date based on frequency
-        const nextDate = new Date(baseDate);
-        if (expense.frequency === 'weekly') {
-          nextDate.setDate(nextDate.getDate() + 7);
-        } else if (expense.frequency === 'monthly') {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-        } else if (expense.frequency === 'yearly') {
-          nextDate.setFullYear(nextDate.getFullYear() + 1);
-        }
+        totalCreated++;
 
-        // 5. Update the Rule with the new date
-        return db.recurringExpense.update({
-          where: { id: expense.id },
-          data: { nextDueDate: nextDate },
-        });
-      })
-    );
+        // Advance the date based on frequency
+        const next = new Date(currentDueDate);
+        if (expense.frequency === 'weekly') next.setDate(next.getDate() + 7);
+        else if (expense.frequency === 'monthly') next.setMonth(next.getMonth() + 1);
+        else if (expense.frequency === 'yearly') next.setFullYear(next.getFullYear() + 1);
 
-    return NextResponse.json({ processed: results.length });
+        currentDueDate = next;
+      }
+
+      // 3. Update the rule with the final nextDueDate
+      await db.recurringExpense.update({
+        where: { id: expense.id },
+        data: { nextDueDate: currentDueDate },
+      });
+    }
+
+    return NextResponse.json({ success: true, recordsCreated: totalCreated });
   } catch (error) {
     console.error('Cron Processing Error:', error);
-    return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

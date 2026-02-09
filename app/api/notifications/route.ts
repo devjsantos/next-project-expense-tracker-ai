@@ -1,4 +1,3 @@
- 'use server';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/prisma';
@@ -12,8 +11,8 @@ export async function GET(req: Request) {
   const unreadOnly = url.searchParams.get('unread') === 'true';
 
   try {
-    const where: Prisma.NotificationWhereInput = { userId };
-    if (unreadOnly) where.read = false; // ✅ Use `read` instead of `readAt`
+    const where: Prisma.NotificationWhereInput = { userId }; // This maps to clerkUserId in your relations
+    if (unreadOnly) where.read = false; 
 
     const notifications = await db.notification.findMany({
       where,
@@ -26,7 +25,7 @@ export async function GET(req: Request) {
       type: n.type,
       title: n.title,
       message: n.message,
-      read: n.read, // ✅ Use `read` here too
+      read: n.read, 
       createdAt: n.createdAt,
     }));
 
@@ -47,7 +46,7 @@ export async function PUT(req: Request) {
 
     if (markAll) {
       await db.notification.updateMany({
-        where: { userId, read: false }, // ✅ Use `read`
+        where: { userId, read: false }, 
         data: { read: true },
       });
       return NextResponse.json({ success: true });

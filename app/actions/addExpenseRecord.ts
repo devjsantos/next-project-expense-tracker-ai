@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { expenseSchema } from '@/lib/validations';
 
 interface RecordData {
   text: string;
@@ -19,67 +20,56 @@ interface RecordResult {
 
 async function addExpenseRecord(formData: FormData): Promise<RecordResult> {
   try {
-    // 1. Extract and Clean Form Data
-    const textValue = formData.get('text');
-    const amountValue = formData.get('amount');
-    const categoryValue = formData.get('category');
-    const dateValue = formData.get('date');
+    // 1. Validation using Zod
+    const rawData = {
+      text: formData.get('text'),
+      amount: formData.get('amount'),
+      category: formData.get('category'),
+      date: formData.get('date'),
+    };
 
-    if (!textValue || !amountValue || !categoryValue || !dateValue) {
-      return { error: 'Text, amount, category, or date is missing' };
+    const validatedFields = expenseSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+      return {
+        error: validatedFields.error.flatten().fieldErrors.text?.[0] ||
+          validatedFields.error.flatten().fieldErrors.amount?.[0] ||
+          'Invalid input data.'
+      };
     }
 
-    const text = textValue.toString().trim();
-    const amount = parseFloat(amountValue.toString());
-    const rawCategory = categoryValue.toString().trim();
+    const { text, amount, category: rawCategory, date: dateString } = validatedFields.data;
 
-    // 2. Validate Amount
-    if (!Number.isFinite(amount) || amount < 0) {
-      return { error: 'Invalid amount provided' };
-    }
-
-    // 3. Standardize Category (Smart Match)
-    const validCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
-
-    const matchedCategory = validCategories.find((c) =>
-      rawCategory.toLowerCase().includes(c.toLowerCase())
-    );
-
-    if (!matchedCategory) {
-      return { error: `Invalid category: "${rawCategory}". Please select a valid option.` };
-    }
-
-    // 4. Parse date to ISO properly
-    let isoDate: string;
-    try {
-      const [year, month, day] = dateValue.toString().split('-');
-      // Use UTC to avoid timezone shifts on the server
-      const parsedDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0));
-      isoDate = parsedDate.toISOString();
-    } catch {
-      return { error: 'Invalid date format' };
-    }
-
-    // 5. Auth Check
+    // 2. Auth Check
     const { userId } = await auth();
     if (!userId) return { error: 'User not found. Please sign in again.' };
 
-    // 6. Create Record in DB
+    // 3. Category Normalization
+    const validCategories = ['Food', 'Transportation', 'Entertainment', 'Shopping', 'Bills', 'Healthcare', 'Other'];
+    const matchedCategory = validCategories.find((c) =>
+      rawCategory.toLowerCase().includes(c.toLowerCase())
+    ) || 'Other';
+
+    // 4. Date Parsing (UTC Midday to prevent timezone shifts)
+    const [year, month, day] = dateString.split('-');
+    const parsedDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0));
+    const isoDate = parsedDate.toISOString();
+
+    // 5. Database Transaction: Create Record
     const createdRecord = await db.records.create({
       data: {
         text,
-        amount,
+        amount: Number(amount.toFixed(2)),
         category: matchedCategory,
         date: isoDate,
         userId
       },
     });
 
-    // 7. Budget Logic & Alerts
+    // 6. Budget Logic & Alerts
     const alerts: { type: 'warning' | 'info' | 'success'; message: string }[] = [];
-    const recordDate = new Date(isoDate);
-    const monthStart = new Date(Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth(), 1));
-    const monthEnd = new Date(Date.UTC(recordDate.getUTCFullYear(), recordDate.getUTCMonth() + 1, 1));
+    const monthStart = new Date(Date.UTC(parsedDate.getUTCFullYear(), parsedDate.getUTCMonth(), 1));
+    const monthEnd = new Date(Date.UTC(parsedDate.getUTCFullYear(), parsedDate.getUTCMonth() + 1, 1));
 
     const budget = await db.budget.findFirst({
       where: { userId, monthStart },
@@ -88,74 +78,52 @@ async function addExpenseRecord(formData: FormData): Promise<RecordResult> {
 
     if (budget) {
       const totals = await db.records.aggregate({
-        where: { 
-          userId, 
-          date: { gte: monthStart, lt: monthEnd }, 
-          NOT: { id: createdRecord.id } 
-        },
+        where: { userId, date: { gte: monthStart, lt: monthEnd } },
         _sum: { amount: true },
       });
 
-      const currentTotalExcluding = totals._sum.amount || 0;
-      const newTotal = currentTotalExcluding + amount;
+      const totalSpent = totals._sum.amount || 0;
+      const effectiveBudget = budget.monthlyTotal + budget.rolloverAmount;
 
-      // Monthly budget alerts (Now using p70, p90, and Limit)
-      if (budget.monthlyTotal > 0) {
-        const p70 = budget.monthlyTotal * 0.7;
-        const p90 = budget.monthlyTotal * 0.9;
+      if (effectiveBudget > 0) {
+        const usageRatio = totalSpent / effectiveBudget;
 
-        if (newTotal > budget.monthlyTotal) {
+        if (totalSpent > effectiveBudget) {
           alerts.push({
             type: 'warning',
-            message: `Monthly budget exceeded: ₱${newTotal.toFixed(2)} / ₱${budget.monthlyTotal.toFixed(2)}`,
+            message: `Budget Exceeded: ₱${totalSpent.toLocaleString()} / ₱${effectiveBudget.toLocaleString()}`,
           });
-        } else if (currentTotalExcluding < p90 && newTotal >= p90) {
-          alerts.push({
-            type: 'warning',
-            message: `Critical: You've reached 90% of your monthly budget.`,
-          });
-        } else if (currentTotalExcluding < p70 && newTotal >= p70) {
-          // p70 is now used, resolving the ESLint warning
-          alerts.push({
-            type: 'info',
-            message: `Heads up: You've used 70% of your monthly budget.`,
-          });
+        } else if (usageRatio >= 0.9) {
+          alerts.push({ type: 'warning', message: `Critical: 90% of budget used.` });
+        } else if (usageRatio >= budget.budgetAlertThreshold) {
+          alerts.push({ type: 'info', message: `${Math.round(budget.budgetAlertThreshold * 100)}% of budget reached.` });
         }
       }
 
-      // Category specific alerts
+      // Category Specific Alert
       const alloc = budget.allocations.find((a) => a.category === matchedCategory);
       if (alloc && alloc.amount > 0) {
         const catTotals = await db.records.aggregate({
-          where: { 
-            userId, 
-            category: matchedCategory, 
-            date: { gte: monthStart, lt: monthEnd }, 
-            NOT: { id: createdRecord.id } 
-          },
+          where: { userId, category: matchedCategory, date: { gte: monthStart, lt: monthEnd } },
           _sum: { amount: true },
         });
-        const newCatTotal = (catTotals._sum.amount || 0) + amount;
-
-        if (newCatTotal > alloc.amount) {
+        const currentCatTotal = catTotals._sum.amount || 0;
+        if (currentCatTotal > alloc.amount) {
           alerts.push({
             type: 'warning',
-            message: `Category '${matchedCategory}' budget exceeded (Limit: ₱${alloc.amount.toFixed(2)}).`,
+            message: `Category '${matchedCategory}' limit reached!`,
           });
         }
       }
     }
 
-    // 8. Handle Notifications
+    // 7. Async Notification Trigger
     if (alerts.length > 0) {
-      try {
-        const { default: createNotification } = await import('@/app/actions/createNotification');
-        const alertMsg = alerts.map((a) => a.message).join('\n');
-        const alertSeverity = alerts.some((a) => a.type === 'warning') ? 'warning' : 'info';
-        await createNotification(userId, alertSeverity, 'Budget Alert', alertMsg);
-      } catch (e) {
-        console.error("Notification failed", e);
-      }
+      const { default: createNotification } = await import('@/app/actions/createNotification');
+      // Fire and forget or handle concurrently
+      await Promise.all(alerts.map(alert =>
+        createNotification(userId, alert.type, 'Budget Update', alert.message)
+      ));
     }
 
     revalidatePath('/');
@@ -168,7 +136,6 @@ async function addExpenseRecord(formData: FormData): Promise<RecordResult> {
       },
       alerts
     };
-
   } catch (error) {
     console.error('Error in addExpenseRecord:', error);
     return { error: 'Database error. Please try again.' };

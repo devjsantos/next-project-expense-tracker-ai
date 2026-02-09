@@ -8,7 +8,12 @@ import RecordHistory from '@/components/RecordHistory';
 import { checkUser } from '@/lib/checkUser';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { BrainCircuit, TrendingUp, History, Wallet, Fingerprint, Sparkles, LayoutDashboard } from 'lucide-react';
+import { BrainCircuit, TrendingUp, History, Wallet, Fingerprint, Sparkles } from 'lucide-react';
+
+// IMPORT YOUR ACTIONS
+import getUserRecord from '@/app/actions/getUserRecord';
+import getBestWorstExpense from '@/app/actions/getBestWorstExpense';
+import getForecast from '@/app/actions/getForecast';
 
 export default async function DashboardPage() {
   const user = await checkUser();
@@ -16,6 +21,13 @@ export default async function DashboardPage() {
   if (!user) {
     redirect('/');
   }
+
+  // FETCH DATA FOR STATS
+  const [userRecordResult, rangeResult, forecast] = await Promise.all([
+    getUserRecord(),
+    getBestWorstExpense(),
+    getForecast(),
+  ]);
 
   const firstName = user.name?.split(' ')[0] || 'User';
 
@@ -64,7 +76,14 @@ export default async function DashboardPage() {
                   <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Real-time Balance</p>
                 </div>
               </div>
-              <ExpenseStats />
+              
+              {/* PASS THE DATA HERE */}
+              <ExpenseStats 
+                userRecordResult={userRecordResult}
+                rangeResult={rangeResult}
+                forecast={forecast}
+              />
+
             </div>
           </div>
           <div className="lg:col-span-4 h-full">
@@ -72,23 +91,22 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 3. CHART & ANALYTICS */}
+        {/* Rest of your components (Chart, Insights, History) */}
         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-200/60 dark:border-slate-800/60 shadow-xl">
-          <div className="px-6 py-5 border-b border-slate-50 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center gap-3">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl text-indigo-600">
-              <TrendingUp size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Spending Trends</h3>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Monthly Overview</p>
-            </div>
-          </div>
-          <div className="p-4 sm:p-8">
-            <RecordChart />
-          </div>
+           <div className="px-6 py-5 border-b border-slate-50 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center gap-3">
+             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl text-indigo-600">
+               <TrendingUp size={20} />
+             </div>
+             <div>
+               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Spending Trends</h3>
+               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Monthly Overview</p>
+             </div>
+           </div>
+           <div className="p-4 sm:p-8">
+             <RecordChart />
+           </div>
         </div>
 
-        {/* 4. AI SUGGESTIONS */}
         <div className="relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 blur-2xl rounded-[2.5rem]"></div>
           <div className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
@@ -110,7 +128,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 5. RECENT TRANSACTIONS */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 px-6">
             <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-500 border border-slate-200 dark:border-slate-800 shadow-sm">

@@ -1,14 +1,26 @@
-// proxy.ts
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Next.js 16 handles the default export as the proxy handler
-export default clerkMiddleware();
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/about(.*)',
+  '/contact(.*)',
+  '/',
+  '/manifest.json',
+  '/icons/(.*)',
+  '/logo/(.*)',
+  '/sounds/(.*)',
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (isPublicRoute(request)) return;
+  await auth.protect();
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
+    // Mas malinis na exclusion list
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|logo|sounds|sw.js|workbox-).*)',
     '/(api|trpc)(.*)',
   ],
 };

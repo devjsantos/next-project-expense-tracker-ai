@@ -9,9 +9,10 @@ import {
 } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
-import { Bell, LayoutDashboard, Wallet, Menu, X, Download, Info, Mail } from 'lucide-react';
+import NotificationCenter from '@/components/NotificationCenter';
+import { LayoutDashboard, Wallet, Menu, X, Download, Info, Mail } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -19,23 +20,38 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Navbar() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Close mobile menu helper
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   useEffect(() => {
+    // 1. Huwag ipakita kung nasa loob na ng standalone app (PWA mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      return;
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstall(true);
     };
+
+    const installedHandler = () => {
+      setShowInstall(false);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
+    };
   }, []);
 
   const handleInstallClick = async () => {
@@ -49,19 +65,24 @@ export default function Navbar() {
   };
 
   const fetchUnread = useCallback(async () => {
-    if (!isSignedIn || document.hidden) return;
+    if (!isLoaded || !isSignedIn || document.hidden) return;
+
     try {
       const res = await fetch('/api/notifications?unread=true');
+      if (res.status === 401) {
+        setUnreadCount(0);
+        return;
+      }
       if (!res.ok) return;
       const json = await res.json();
       setUnreadCount(Array.isArray(json.notifications) ? json.notifications.length : 0);
     } catch (err) {
-      console.error('Fetch failure:', err);
+      console.debug('Notification fetch skipped:', err);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, isLoaded]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || !isLoaded) return;
     fetchUnread();
     const interval = setInterval(fetchUnread, 60000);
     window.addEventListener('notifications:changed', fetchUnread);
@@ -69,7 +90,7 @@ export default function Navbar() {
       clearInterval(interval);
       window.removeEventListener('notifications:changed', fetchUnread);
     };
-  }, [isSignedIn, fetchUnread]);
+  }, [isSignedIn, isLoaded, fetchUnread]);
 
   return (
     <nav className="sticky top-0 z-[100] bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50">
@@ -103,7 +124,6 @@ export default function Navbar() {
               <NavLink href="/about" icon={<Info size={16} />} label="How it Works" />
               <NavLink href="/contact" icon={<Mail size={16} />} label="Help" />
             </SignedOut>
-
             <SignedIn>
               <NavLink href="/budget" icon={<Wallet size={16} />} label="Budgeting" />
             </SignedIn>
@@ -113,10 +133,15 @@ export default function Navbar() {
           <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
 
+            <SignedIn>
+              <NotificationCenter unreadCount={unreadCount} />
+            </SignedIn>
+
+            {/* Install Button - Cleaned up styling slightly */}
             {showInstall && (
               <button
                 onClick={handleInstallClick}
-                className="flex p-2.5 bg-indigo-500/10 text-indigo-600 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all animate-bounce-subtle"
+                className="flex p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all animate-pulse"
                 title="Install App"
               >
                 <Download size={20} />
@@ -137,7 +162,6 @@ export default function Navbar() {
               </SignInButton>
             </SignedOut>
 
-            {/* Toggle Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors"
@@ -158,33 +182,29 @@ export default function Navbar() {
           >
             <LayoutDashboard size={18} /> {isSignedIn ? "Dashboard" : "Home"}
           </Link>
-
           <SignedOut>
-            <Link
-              href="/about"
-              onClick={closeMenu}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
-            >
+            <Link href="/about" onClick={closeMenu} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
               <Info size={18} /> How it Works
             </Link>
-            <Link
-              href="/contact"
-              onClick={closeMenu}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
-            >
+            <Link href="/contact" onClick={closeMenu} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
               <Mail size={18} /> Help
             </Link>
           </SignedOut>
-
           <SignedIn>
-            <Link
-              href="/budget"
-              onClick={closeMenu}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
-            >
+            <Link href="/budget" onClick={closeMenu} className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 font-bold text-xs uppercase tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
               <Wallet size={18} /> Budgeting
             </Link>
           </SignedIn>
+
+          {/* Mobile Install Option */}
+          {showInstall && (
+            <button
+              onClick={() => { handleInstallClick(); closeMenu(); }}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-indigo-600 text-white font-bold text-xs uppercase tracking-widest transition-colors"
+            >
+              <Download size={18} /> Install App
+            </button>
+          )}
         </div>
       )}
     </nav>

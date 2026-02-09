@@ -20,11 +20,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'SmartJuanPeso AI - Neural Finance',
-  description: 'AI-powered financial logic and expense tracking.',
+  description: 'AI-powered financial logic and expense tracking for every Juan.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'SmartJuanPeso AI',
   },
   icons: {
@@ -38,7 +38,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#6366f1', // Indigo to match your logo/branding
+  themeColor: '#6366f1',
 };
 
 export default function RootLayout({
@@ -47,7 +47,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    /* Fixed ClerkProvider: Added telemetry={false} to stop 404 POST /budgets error */
     <ClerkProvider telemetry={false}>
       <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head>
@@ -74,9 +73,9 @@ export default function RootLayout({
             <ClerkThemeProvider>
               <Navbar />
               <ToastProvider>
-                <div className="flex-1 flex flex-col">
+                <main className="flex-1 flex flex-col">
                   {children}
-                </div>
+                </main>
               </ToastProvider>
               <Footer />
             </ClerkThemeProvider>

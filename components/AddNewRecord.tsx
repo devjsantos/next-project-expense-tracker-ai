@@ -33,7 +33,6 @@ const AddRecord = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoCategorizing, setIsAutoCategorizing] = useState(false);
-  const [lastAutoCategory, setLastAutoCategory] = useState('');
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,11 +53,10 @@ const AddRecord = () => {
         let aiCategory = result.data.category || '';
         if (aiCategory === 'Transpo') aiCategory = 'Transportation';
         setCategory(aiCategory);
-        setLastAutoCategory(aiCategory);
         setIsModalOpen(true);
         addToast('Analysis complete', 'success');
       } else {
-        throw new Error(result.error || 'Congestion. Try manual entry.');
+        throw new Error(result.error || 'OCR failed. Try manual entry.');
       }
     } catch (error: any) {
       addToast(error.message, 'error');
@@ -70,7 +68,8 @@ const AddRecord = () => {
 
   useEffect(() => {
     const trimmedDesc = description.trim();
-    if (trimmedDesc.length < 3) return;
+    // Only suggest if description is long enough and category isn't already manually set
+    if (trimmedDesc.length < 3 || category) return;
 
     const debounceTimer = setTimeout(async () => {
       setIsAutoCategorizing(true);
@@ -78,17 +77,16 @@ const AddRecord = () => {
         const result = await suggestCategory(trimmedDesc);
         if (result.category) {
           setCategory(result.category);
-          setLastAutoCategory(result.category);
         }
       } catch (err) {
         console.error(err);
       } finally {
         setIsAutoCategorizing(false);
       }
-    }, 1000);
+    }, 1200);
 
     return () => clearTimeout(debounceTimer);
-  }, [description]);
+  }, [description, category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +103,8 @@ const AddRecord = () => {
         addToast('Record secured', 'success');
         resetForm();
         window.dispatchEvent(new CustomEvent('records:changed'));
+      } else {
+        addToast(result.error, 'error');
       }
     } finally {
       setIsLoading(false);
@@ -113,13 +113,11 @@ const AddRecord = () => {
 
   const resetForm = () => {
     setAmount(''); setCategory(''); setDescription(''); setDate(new Date().toISOString().split('T')[0]);
-    setLastAutoCategory(''); setIsModalOpen(false);
+    setIsModalOpen(false);
   };
 
   return (
     <div className='bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800/60 transition-all'>
-
-      {/* CSS to hide number input arrows */}
       <style jsx global>{`
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -131,7 +129,6 @@ const AddRecord = () => {
         }
       `}</style>
 
-      {/* --- SCANNING OVERLAY --- */}
       {isScanning && createPortal(
         <div className="fixed inset-0 z-[20000] bg-slate-950/40 backdrop-blur-2xl flex flex-col items-center justify-center animate-in fade-in duration-500">
           <div className="relative p-10 bg-white/10 dark:bg-slate-800/20 border border-white/20 rounded-[3rem] backdrop-blur-xl shadow-2xl flex flex-col items-center gap-6">
@@ -147,7 +144,6 @@ const AddRecord = () => {
         document.body
       )}
 
-      {/* --- MAIN UI --- */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
@@ -174,14 +170,12 @@ const AddRecord = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
-      {/* --- MODAL --- */}
       {isModalOpen && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md animate-in fade-in" onClick={resetForm} />
 
           <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800">
 
-            {/* Header */}
             <div className="px-8 pt-8 pb-4 flex items-center justify-between border-b border-slate-50 dark:border-slate-800/50">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
@@ -198,10 +192,9 @@ const AddRecord = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-8">
-              {/* Amount Input */}
               <div className="flex flex-col items-center py-4">
                 <div className="relative group">
-                  <span className="absolute -left-10 top-1/2 -translate-y-1/2 text-2xl font-light text-slate-300">PHP</span>
+                  <span className="absolute -left-10 top-1/2 -translate-y-1/2 text-2xl font-light text-slate-300">₱</span>
                   <input
                     type="number" step="any" value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -213,15 +206,9 @@ const AddRecord = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* Description */}
                 <div className="group relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl transition-all focus-within:ring-2 focus-within:ring-indigo-500/20">
-                  {/* Icon Container: Added z-10 and pointer-events-none to prevent 'covering' the icon */}
                   <div className="absolute z-10 pointer-events-none left-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm">
-                    <Tag
-                      className="text-slate-500 group-focus-within:text-indigo-500 transition-colors"
-                      size={16}
-                      strokeWidth={2.5}
-                    />
+                    <Tag className="text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} strokeWidth={2.5} />
                   </div>
                   <input
                     type="text"
@@ -233,10 +220,8 @@ const AddRecord = () => {
                   />
                 </div>
 
-                {/* Date & Category Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl group">
-                    {/* Calendar Icon: z-10 ensures it stays above the date picker background */}
                     <Calendar className="absolute z-10 left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
                     <input
                       type="date"
@@ -246,30 +231,28 @@ const AddRecord = () => {
                     />
                   </div>
 
-                  <div className="relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl group cursor-pointer overflow-hidden">
+                  <div className="relative bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-2xl group overflow-hidden">
                     <div className="flex items-center gap-2 pl-4 py-4 pr-4">
                       {isAutoCategorizing ? (
                         <Loader2 size={16} className="text-indigo-500 animate-spin" />
                       ) : (
                         <Sparkles size={16} className="text-indigo-500" />
                       )}
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-1">Category</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex-1">Selected</span>
                       <span className="text-xs font-bold dark:text-white">
-                        {category ? CATEGORIES.find(c => c.id === category)?.label : 'None'}
+                        {category ? CATEGORIES.find(c => c.id === category)?.label : 'Pick One'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Category Pills (FIXED) */}
                 <div className="flex flex-wrap gap-2 pt-2 justify-center">
                   {CATEGORIES.map(cat => (
                     <button
                       key={cat.id}
                       type="button"
-                      disabled
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 border 
-                        ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'} 
+                      onClick={() => setCategory(cat.id)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 border cursor-pointer hover:scale-105 active:scale-95
                         ${category === cat.id
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30 -translate-y-0.5'
                           : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-500'
@@ -281,7 +264,6 @@ const AddRecord = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading || !category || !amount}

@@ -4,12 +4,26 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
 import { useToast } from './ToastProvider';
 import { Save, AlertCircle, Coins } from 'lucide-react';
+import { z } from 'zod';
+
+/* ================= VALIDATION SCHEMA ================= */
+const budgetSettingsSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/, "Invalid month format"),
+  monthlyTotal: z.number().positive("Budget must be greater than ₱0"),
+  allocations: z.array(z.object({
+    category: z.string(),
+    amount: z.number().nonnegative()
+  })).refine((data) => {
+    // Optional: Ensure allocations don't exceed total (already handled in UI but good for safety)
+    return true;
+  })
+});
 
 /* ================= TYPES ================= */
 interface Allocation { category: string; amount: number; }
 interface InitialBudget { month?: string; monthlyTotal?: number; allocations?: Allocation[]; }
 
-// This fixes your "Cannot find name LocalToastState" error
+// Fixed: Unified local state type
 interface LocalToastState {
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
@@ -23,22 +37,21 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   const [allocations, setAllocations] = useState<Allocation[]>(
     initial?.allocations ?? defaultCategories.map(category => ({ category, amount: 0 }))
   );
-  
+
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // useToast from your provider
   const { addToast } = useToast();
 
   const displayMonth = useMemo(() => {
     if (!month) return "Select Month";
-    const date = new Date(month + "-02");
+    const date = new Date(month + "-02"); // Use 02 to avoid timezone shifts to previous month
     return isNaN(date.getTime()) ? "Invalid" : date.toLocaleString('default', { month: 'long', year: 'numeric' });
   }, [month]);
 
   const allocationSum = allocations.reduce((sum, a) => sum + a.amount, 0);
   const remainingToAllocate = monthlyTotal - allocationSum;
-  const isOverAllocated = allocationSum > monthlyTotal;
+  const isOverAllocated = Number(allocationSum.toFixed(2)) > Number(monthlyTotal.toFixed(2));
 
   const fetchBudget = useCallback(async () => {
     if (!month) return;
@@ -51,11 +64,18 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
       if (data?.budget) {
         setMonthlyTotal(data.budget.monthlyTotal || 0);
         if (data.perCategory) {
-          setAllocations(data.perCategory.map((pc: any) => ({
+          // Sync existing allocations with default categories to ensure all are shown
+          const incomingAllocations = data.perCategory.map((pc: any) => ({
             category: pc.category,
             amount: pc.allocated
-          })));
+          }));
+
+          setAllocations(incomingAllocations);
         }
+      } else {
+        // Reset for new months
+        setMonthlyTotal(0);
+        setAllocations(defaultCategories.map(category => ({ category, amount: 0 })));
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -80,12 +100,21 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (monthlyTotal <= 0) {
-      addToast('Please set a budget higher than ₱0', 'warning');
+
+    // 1. Client-side Zod Validation
+    const validation = budgetSettingsSchema.safeParse({ month, monthlyTotal, allocations });
+
+    if (!validation.success) {
+      addToast(validation.error.errors[0].message, 'warning');
       return;
     }
 
-    addToast('Saving your budget limits...', 'loading');
+    if (isOverAllocated) {
+      addToast('Allocations exceed total budget!', 'error');
+      return;
+    }
+
+    addToast('Saving your budget limits...', 'info');
     setIsProcessing(true);
 
     const form = new FormData();
@@ -97,9 +126,10 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
     try {
       const res = await setMonthlyBudget(form);
       if (res && 'error' in res) {
-        addToast('Could not save budget. Try again.', 'error');
+        addToast(res.error || 'Could not save budget.', 'error');
       } else {
         addToast(`Budget for ${displayMonth} is ready!`, 'success');
+        // Notify other components (Dashboard, Charts) to refresh
         window.dispatchEvent(new CustomEvent('budget:changed'));
         if (onClose) onClose();
       }
@@ -113,7 +143,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
   return (
     <div className="w-full">
       <form onSubmit={submit} className="space-y-5">
-        
+
         {/* 1. TOP BAR */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
@@ -124,14 +154,16 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
               className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 font-bold text-xs outline-none focus:ring-1 focus:ring-indigo-500"
             />
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[10px] font-black uppercase text-slate-400 truncate">Editing {displayMonth}</span>
+            <span className="text-[10px] font-black uppercase text-slate-400 truncate">
+              {isLoadingBudget ? 'Loading...' : `Editing ${displayMonth}`}
+            </span>
           </div>
 
           <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${isOverAllocated ? 'bg-red-500/10 border-red-200' : 'bg-emerald-500/10 border-emerald-200'}`}>
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Left to Plan:</span>
             <div className="flex items-center gap-2">
-               <span className={`text-sm font-black ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
-                ₱{remainingToAllocate.toLocaleString()}
+              <span className={`text-sm font-black ${isOverAllocated ? 'text-red-600' : 'text-emerald-600'}`}>
+                ₱{remainingToAllocate.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
               {isOverAllocated && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
             </div>
@@ -160,7 +192,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
             <Coins size={14} className="text-indigo-500" />
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Allocation</h3>
           </div>
-          
+
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar">
             {allocations.map((a, i) => (
               <div key={a.category} className="p-3 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-indigo-500/30 transition-all">
@@ -191,7 +223,7 @@ export default function BudgetSettings({ initial, onClose }: { initial?: Initial
           </button>
           <button
             type="submit"
-            disabled={isProcessing || isOverAllocated}
+            disabled={isProcessing || isOverAllocated || isLoadingBudget}
             className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
           >
             <Save size={14} />
