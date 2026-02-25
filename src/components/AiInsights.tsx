@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getAIInsights } from '@/app/actions/getAIInsights';
-import { generateInsightAnswer } from '@/app/actions/generateInsightAnswer';
+import { getAIInsights } from '@/actions/getAIInsights';
+import { generateInsightAnswer } from '@/actions/generateInsightAnswer';
 import { useToast } from '@/components/ToastProvider';
 import {
   Sparkles,
@@ -65,7 +65,7 @@ const AIInsights = () => {
 
   const reportFailure = async (details: { message: string; errors?: any }) => {
     try {
-      const { default: report } = await import('@/app/actions/reportAiFailure');
+      const { default: report } = await import('@/actions/reportAiFailure');
       await report(details);
       addToast('Engine diagnostic reported', 'info');
     } catch (err) {
@@ -76,7 +76,7 @@ const AIInsights = () => {
   const handleEmailReport = async () => {
     setIsEmailing(true);
     try {
-      const { default: sendInsightsEmail } = await import('@/app/actions/sendInsightsEmail');
+      const { default: sendInsightsEmail } = await import('@/actions/sendInsightsEmail');
       const result = await sendInsightsEmail();
       if (result?.ok) addToast('Analysis sent to your inbox!', 'success');
       else addToast(typeof result?.error === 'string' ? result.error : 'Sync failed', 'error');
@@ -98,7 +98,7 @@ const AIInsights = () => {
     if (detailsId) {
       setIsLoading(true);
       try {
-        const { default: getDetails } = await import('@/app/actions/getAiFailureDetails');
+        const { default: getDetails } = await import('@/actions/getAiFailureDetails');
         const res = await getDetails(detailsId);
         if (res?.ok) addToast('Diagnostic log retrieved', 'info');
       } catch (err) {

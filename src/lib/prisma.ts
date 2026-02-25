@@ -1,10 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import env from '@/lib/env';
 
 const prismaClientSingleton = () => {
   // 1. Create a connection pool using your env variable
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ connectionString: env.DATABASE_URL });
   
   // 2. Initialize the Prisma adapter
   const adapter = new PrismaPg(pool);
@@ -19,6 +20,6 @@ declare global {
 
 export const db = globalThis.prisma ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
   globalThis.prisma = db;
 }

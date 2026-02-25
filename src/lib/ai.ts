@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import env from '@/lib/env';
 import Ajv from 'ajv';
 
 /* ================= TYPES ================= */
@@ -44,25 +45,25 @@ export class AIValidationError extends Error {
 
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY,
+  apiKey: env.OPENROUTER_API_KEY || env.OPENAI_API_KEY,
   defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    'HTTP-Referer': env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     'X-Title': 'SmartJuanPeso AI',
   },
 });
 /* ================= 2026 STABLE FREE MODEL CONFIG ================= */
 
-// PALITAN ITONG PRIMARY_MODEL:
+// Use the explicit free-tier ID currently active on OpenRouter
 const PRIMARY_MODEL = 'google/gemini-2.0-flash-lite-preview-02-05:free';
+// const PRIMARY_MODEL = 'meta-llama/llama-3.1-8b-instruct:free';
 
-// VISION: Stable vision-capable model for receipts
-const VISION_MODEL = 'google/gemini-2.0-flash-exp:free';
+// VISION: Use the same stable model (Gemini 2.0 Flash is vision-capable)
+const VISION_MODEL = 'google/gemini-2.0-flash-001'; 
 
 const TEXT_FALLBACKS = [
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'mistralai/mistral-7b-instruct'
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'qwen/qwen-2-7b-instruct:free'
 ];
-
 /* ================= UTILITIES ================= */
 
 function normalizeInsightType(value: unknown): InsightType {

@@ -2,9 +2,9 @@
 
 import React, { useRef, useState, ChangeEvent, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import addExpenseRecord from '@/app/actions/addExpenseRecord';
-import { suggestCategory } from '@/app/actions/suggestCategory';
-import { scanReceipt } from '@/app/actions/scanReceipt';
+import addExpenseRecord from '@/actions/addExpenseRecord';
+import { suggestCategory } from '@/actions/suggestCategory';
+import { scanReceipt } from '@/actions/scanReceipt';
 import { useToast } from '@/components/ToastProvider';
 import {
   Camera, Edit3, Sparkles, Calendar,

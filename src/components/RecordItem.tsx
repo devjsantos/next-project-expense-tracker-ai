@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { Record as MyExpenseRecord } from '@/types/Record';
-import deleteRecord from '@/app/actions/deleteRecord';
-import updateRecord from '@/app/actions/updateRecord';
+import deleteRecord from '@/actions/deleteRecord';
+import updateRecord from '@/actions/updateRecord';
 import { useToast } from '@/components/ToastProvider';
 import {
   Pencil,

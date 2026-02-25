@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import Script from 'next/script';
 import { ClerkProvider } from '@clerk/nextjs';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -50,7 +51,9 @@ export default function RootLayout({
     <ClerkProvider telemetry={false}>
       <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head>
-          <script
+          <Script
+            id="init-theme"
+            strategy="beforeInteractive"
             dangerouslySetInnerHTML={{
               __html: `
                 (function() {

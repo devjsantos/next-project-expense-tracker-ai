@@ -119,7 +119,7 @@ async function addExpenseRecord(formData: FormData): Promise<RecordResult> {
 
     // 7. Async Notification Trigger
     if (alerts.length > 0) {
-      const { default: createNotification } = await import('@/app/actions/createNotification');
+      const { default: createNotification } = await import('@/actions/createNotification');
       // Fire and forget or handle concurrently
       await Promise.all(alerts.map(alert =>
         createNotification(userId, alert.type, 'Budget Update', alert.message)

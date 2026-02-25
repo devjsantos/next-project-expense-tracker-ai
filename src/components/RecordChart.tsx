@@ -1,4 +1,4 @@
-import { getRecords } from '@/app/actions/getRecords';
+import { getRecords } from '@/actions/getRecords';
 import BarChart from './BarChart';
 import { AlertCircle, TrendingUp, Inbox, Sparkles } from 'lucide-react';
 

@@ -5,6 +5,7 @@ import getUserRecord from './getUserRecord';
 import getBestWorstExpense from './getBestWorstExpense';
 import { db } from '@/lib/prisma';
 import sendEmail from '@/lib/email';
+import env from '@/lib/env';
 
 type EmailReportCreateData = {
   userId: string;
@@ -161,7 +162,7 @@ export default async function sendInsightsEmail() {
         </table>
 
         <div style="text-align:center; margin-top:30px; padding-top:24px; border-top:1px solid #e2e8f0;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="display:inline-block; background:#0f172a; color:#fff; padding:14px 32px; border-radius:12px; text-decoration:none; font-weight:800; font-size:13px; text-transform: uppercase; letter-spacing: 0.05em;">Open SmartJuanPeso</a>
+          <a href="${env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="display:inline-block; background:#0f172a; color:#fff; padding:14px 32px; border-radius:12px; text-decoration:none; font-weight:800; font-size:13px; text-transform: uppercase; letter-spacing: 0.05em;">Open SmartJuanPeso</a>
           <p style="color:#94a3b8; font-size:10px; margin-top:24px; font-weight: 500;">Sent via SmartJuanPeso AI Engine • ${new Date().toLocaleDateString()}</p>
         </div>
       </div>
@@ -182,7 +183,7 @@ export default async function sendInsightsEmail() {
         userId: user.clerkUserId,
         email: user.email,
         subject: `SmartJuanPeso AI Insights - ${currentMonthName}`,
-        provider: process.env.RESEND_API_KEY ? 'resend' : 'nodemailer',
+        provider: env.RESEND_API_KEY ? 'resend' : 'nodemailer',
         status: 'sent',
       },
     });

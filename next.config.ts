@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 import withPWA from "next-pwa";
+import env from '@/lib/env';
 
 const nextConfig: NextConfig = {
   images: {
-    // Adding your domain here can help the optimizer identify the source
     remotePatterns: [
       {
         protocol: "https",
@@ -24,5 +24,5 @@ export default withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
+  disable: env.NODE_ENV === "development",
 })(nextConfig);

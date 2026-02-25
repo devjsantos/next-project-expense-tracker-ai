@@ -1,4 +1,4 @@
-import getBudgets from '@/app/actions/getBudgets';
+import getBudgets from '@/actions/getBudgets';
 import BudgetOverview from '@/components/BudgetOverview';
 import RecurringExpenses from '@/components/RecurringExpenses';
 import BudgetHistory from '@/components/BudgetHistory';

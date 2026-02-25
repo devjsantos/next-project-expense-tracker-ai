@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import env from '@/lib/env';
 
 type EmailPayload = {
   to: string;
@@ -10,7 +11,7 @@ type EmailPayload = {
 const globalFetch = (globalThis as unknown as { fetch?: typeof fetch }).fetch;
 
 async function sendWithResend(payload: EmailPayload) {
-  const key = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  const key = env.RESEND_API_KEY || env.RESEND_KEY;
   if (!key) throw new Error('Resend API key not configured');
 
   const res = await (globalFetch ?? fetch)('https://api.resend.com/emails', {
@@ -20,7 +21,7 @@ async function sendWithResend(payload: EmailPayload) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM || 'no-reply@example.com',
+      from: env.RESEND_FROM || 'no-reply@example.com',
       to: [payload.to],
       subject: payload.subject,
       html: payload.html,
@@ -37,7 +38,7 @@ async function sendWithResend(payload: EmailPayload) {
 }
 
 export async function sendEmail(payload: EmailPayload) {
-  const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
+  const resendKey = env.RESEND_API_KEY || env.RESEND_KEY;
   
   // 1. Try Resend First
   if (resendKey) {
@@ -45,16 +46,16 @@ export async function sendEmail(payload: EmailPayload) {
   }
 
   // 2. Fallback to SMTP
-  const smtpHost = process.env.SMTP_HOST;
+  const smtpHost = env.SMTP_HOST;
   if (smtpHost) {
     const transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: Number(process.env.SMTP_PORT) || 465,
-      secure: process.env.SMTP_SECURE === 'true', // Gmail 465 = true
+      port: Number(env.SMTP_PORT) || 465,
+      secure: (env.SMTP_SECURE || 'true') === 'true', // Gmail 465 = true
       pool: true, // Reuse connections
       auth: {
-        user: process.env.SMTP_USER,
-        pass: (process.env.SMTP_PASS || '').replace(/\s+/g, ''), // Strips spaces
+        user: env.SMTP_USER,
+        pass: (env.SMTP_PASS || '').replace(/\s+/g, ''), // Strips spaces
       },
       // Increase timeout for slow serverless cold starts
       connectionTimeout: 10000, 
@@ -62,7 +63,7 @@ export async function sendEmail(payload: EmailPayload) {
     });
 
     try {
-      const from = process.env.SMTP_FROM || 'jojo.santos.dev@gmail.com';
+      const from = env.SMTP_FROM || 'jojo.santos.dev@gmail.com';
       const info = await transporter.sendMail({
         from,
         to: payload.to,

@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "npm run validate:env && next dev --webpack",
     "build": "prisma generate && next build --webpack",
+    "validate:env": "node -r dotenv/config ./scripts/validateEnv.js",
+    "prebuild": "npm run validate:env",
+    "predev": "npm run validate:env",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest"

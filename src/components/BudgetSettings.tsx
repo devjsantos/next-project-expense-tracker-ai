@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import setMonthlyBudget from '@/app/actions/setMonthlyBudget';
+import setMonthlyBudget from '@/actions/setMonthlyBudget';
 import { useToast } from './ToastProvider';
 import { Save, AlertCircle, Coins } from 'lucide-react';
 import { z } from 'zod';

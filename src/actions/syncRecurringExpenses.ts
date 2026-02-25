@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
-import createNotification from '@/app/actions/createNotification';
+import createNotification from '@/actions/createNotification';
 
 export async function syncRecurringExpenses() {
   const { userId } = await auth();

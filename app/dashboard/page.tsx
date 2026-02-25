@@ -11,9 +11,9 @@ import { redirect } from 'next/navigation';
 import { BrainCircuit, TrendingUp, History, Wallet, Fingerprint, Sparkles } from 'lucide-react';
 
 // IMPORT YOUR ACTIONS
-import getUserRecord from '@/app/actions/getUserRecord';
-import getBestWorstExpense from '@/app/actions/getBestWorstExpense';
-import getForecast from '@/app/actions/getForecast';
+import getUserRecord from '@/actions/getUserRecord';
+import getBestWorstExpense from '@/actions/getBestWorstExpense';
+import getForecast from '@/actions/getForecast';
 
 export default async function DashboardPage() {
   const user = await checkUser();

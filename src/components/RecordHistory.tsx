@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getRecords } from '@/app/actions/getRecords';
+import { getRecords } from '@/actions/getRecords';
 import RecordItem from './RecordItem';
 import { Record } from '@/types/Record';
-import getForecast from '@/app/actions/getForecast';
-import addExpenseRecord from '@/app/actions/addExpenseRecord';
+import getForecast from '@/actions/getForecast';
+import addExpenseRecord from '@/actions/addExpenseRecord';
 import {
   History,
   Edit3,

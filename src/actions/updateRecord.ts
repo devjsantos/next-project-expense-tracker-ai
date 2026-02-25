@@ -158,7 +158,7 @@ export default async function updateRecord(payload: {
     if (alerts.length > 0) {
       try {
         // Specifically typing the dynamic import result to satisfy ESLint
-        const notificationModule = (await import('@/app/actions/createNotification')) as {
+        const notificationModule = (await import('@/actions/createNotification')) as {
           default: CreateNotificationFn;
         };
         
