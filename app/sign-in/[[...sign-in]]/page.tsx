@@ -1,7 +1,13 @@
 import { SignIn } from '@clerk/nextjs';
 
-export default function Page({ searchParams }: { searchParams?: { [key: string]: string | string[] } }) {
-  const raw = searchParams?.redirect_url ?? searchParams?.redirectUrl;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] }>;
+}) {
+  const params = await searchParams;
+
+  const raw = params?.redirect_url ?? params?.redirectUrl;
   const redirectUrl = Array.isArray(raw) ? raw[0] : raw;
 
   return (
