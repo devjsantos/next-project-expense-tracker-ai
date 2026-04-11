@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import ToastProvider from '@/components/ToastProvider';
 import ClerkThemeProvider from '@/components/ClerkThemeProvider';
+import InactivityGuard from '@/components/InactivityGuard';
+import SessionTimeoutAlert from '@/components/SessionTimeoutAlert';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -74,13 +76,17 @@ export default function RootLayout({
         >
           <ThemeProvider>
             <ClerkThemeProvider>
-              <Navbar />
               <ToastProvider>
+                <InactivityGuard />
+                <Navbar />
+
                 <main className="flex-1 flex flex-col">
                   {children}
                 </main>
+
+                <Footer />
+                <SessionTimeoutAlert />
               </ToastProvider>
-              <Footer />
             </ClerkThemeProvider>
           </ThemeProvider>
         </body>

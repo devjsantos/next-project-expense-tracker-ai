@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   if (!userId) return NextResponse.json({ error: 'User not found' }, { status: 401 });
 
   const url = new URL(req.url);
-  const month = url.searchParams.get('month'); // YYYY-MM
+  const month = url.searchParams.get('month');
   if (!month) return NextResponse.json({ error: 'Month required' }, { status: 400 });
 
   const [year, mon] = month.split('-');

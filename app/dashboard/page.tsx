@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-
+import { auth } from '@clerk/nextjs/server';
 import AddNewRecord from '@/components/AddNewRecord';
 import AIInsights from '@/components/AiInsights';
 import ExpenseStats from '@/components/ExpenseStats';
@@ -10,38 +10,35 @@ import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { BrainCircuit, TrendingUp, History, Wallet, Fingerprint, Sparkles } from 'lucide-react';
 
-// IMPORT YOUR ACTIONS
 import getUserRecord from '@/actions/getUserRecord';
 import getBestWorstExpense from '@/actions/getBestWorstExpense';
 import getForecast from '@/actions/getForecast';
 
 export default async function DashboardPage() {
-  const user = await checkUser();
+  const { userId } = await auth();
 
-  if (!user) {
-    redirect('/');
+  if (!userId) {
+    redirect('/sign-in');
   }
 
-  // FETCH DATA FOR STATS
+  const user = await checkUser();
   const [userRecordResult, rangeResult, forecast] = await Promise.all([
     getUserRecord(),
     getBestWorstExpense(),
     getForecast(),
   ]);
 
-  const firstName = user.name?.split(' ')[0] || 'User';
+  const firstName = user?.name?.split(' ')[0] || 'User';
 
   return (
     <main className="bg-[#f8fafc] dark:bg-[#020617] min-h-screen pb-20 transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 sm:pt-10 space-y-6 sm:space-y-10">
-
-        {/* 1. TOP NAVIGATION / GREETING */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 dark:border-slate-800/60 shadow-xl shadow-slate-200/5">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl blur opacity-20"></div>
               <Image
-                src={user.imageUrl || '/default-avatar.png'}
+                src={user?.imageUrl || '/default-avatar.png'}
                 alt="Profile"
                 width={50}
                 height={50}
@@ -62,7 +59,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 2. SUMMARY & QUICK ACTION */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
           <div className="lg:col-span-8 bg-slate-900 dark:bg-indigo-600 rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-400/20 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:bg-indigo-400/30 transition-colors duration-700"></div>
@@ -77,7 +73,6 @@ export default async function DashboardPage() {
                 </div>
               </div>
               
-              {/* PASS THE DATA HERE */}
               <ExpenseStats 
                 userRecordResult={userRecordResult}
                 rangeResult={rangeResult}
@@ -91,7 +86,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Rest of your components (Chart, Insights, History) */}
         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-200/60 dark:border-slate-800/60 shadow-xl">
            <div className="px-6 py-5 border-b border-slate-50 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md flex items-center gap-3">
              <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl text-indigo-600">

@@ -7,6 +7,7 @@ import {
   UserButton,
   useUser,
 } from '@clerk/nextjs';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
@@ -20,7 +21,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Navbar() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
@@ -137,6 +138,15 @@ export default function Navbar() {
               <NotificationCenter unreadCount={unreadCount} />
             </SignedIn>
 
+            {/* Friendly greeting for signed-in users (desktop) */}
+            <SignedIn>
+              {isLoaded && user && (
+                <div className="hidden sm:flex items-center pl-3 pr-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Hi, {user.firstName ? user.firstName : user.fullName ? user.fullName.split(' ')[0] : 'there'}
+                </div>
+              )}
+            </SignedIn>
+
             {/* Install Button - Cleaned up styling slightly */}
             {showInstall && (
               <button
@@ -164,7 +174,10 @@ export default function Navbar() {
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-navigation"
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+              className="md:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -174,7 +187,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+        <div id="mobile-navigation" className="md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
           <Link
             href={isSignedIn ? "/dashboard" : "/"}
             onClick={closeMenu}
@@ -212,8 +225,19 @@ export default function Navbar() {
 }
 
 function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+  const pathname = usePathname();
+  const isActive = pathname?.startsWith(href) ?? false;
+
   return (
-    <Link href={href} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all">
+    <Link
+      href={href}
+      aria-current={isActive ? 'page' : undefined}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+        isActive
+          ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900'
+          : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400'
+      }`}
+    >
       {icon} {label}
     </Link>
   );

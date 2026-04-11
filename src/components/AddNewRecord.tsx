@@ -49,10 +49,10 @@ const AddRecord = () => {
 
       if (result && result.success && result.data) {
         setAmount(result.data.amount?.toString() || '');
-        setDescription(result.data.description || result.data.merchant || result.data.store || '');
+        setDescription(result.data.description || '');
         let aiCategory = result.data.category || '';
         if (aiCategory === 'Transpo') aiCategory = 'Transportation';
-        setCategory(aiCategory);
+        setCategory(result.data.category || '');
         setIsModalOpen(true);
         addToast('Analysis complete', 'success');
       } else {
